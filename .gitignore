@@ -93,3 +93,14 @@ temp/
 .claude/
 *.git.*
 CLAUDE.md
+
+# Temporary migration directories and scripts
+bash-tool-submission/
+bash-tool-submission-v2/
+clanker-tools-backup/
+clanker-tools-new/
+create-clanker-tool/
+clanker-tools-migration-summary.md
+submit-bash-pr.sh
+push-workflow-fix.sh
+test-tool-extraction.sh
