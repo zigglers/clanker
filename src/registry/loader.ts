@@ -244,7 +244,7 @@ export class ToolLoader {
             const moduleExports = await this.importModule(filePath);
             debug.log(`[ToolLoader] Module exports for ${filePath}:`, Object.keys(moduleExports));
 
-            const tool = await this.extractTool(moduleExports);d
+            const tool = await this.extractTool(moduleExports);
 
             if (!tool) {
                 debug.warn(`[ToolLoader] No valid tool found in ${filePath}`);

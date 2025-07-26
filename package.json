@@ -4,6 +4,13 @@
   "description": "AI agents that actually do things - real actions, real changes, real time",
   "type": "module",
   "main": "dist/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/exports.js",
+      "types": "./dist/exports.d.ts"
+    },
+    "./package.json": "./package.json"
+  },
   "bin": {
     "clanker": "./dist/index.js"
   },

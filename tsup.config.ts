@@ -3,7 +3,7 @@ import { defineConfig } from 'tsup'
 export default defineConfig([
   // Main bundle
   {
-    entry: ['src/index.ts'],
+    entry: ['src/index.ts', 'src/exports.ts'],
     format: ['esm'],
     dts: true,
     shims: true,
