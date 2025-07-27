@@ -4,7 +4,7 @@ import { useSnapshot } from 'valtio';
 import { store } from '../../../store';
 import { CommandSuggestions } from '../command-suggestions';
 import { ModelSelection } from '../model-selection';
-import { ChatInput } from './ChatInput';
+import { EnhancedChatInput } from './EnhancedChatInput';
 import ConfirmationDialog from '../confirmation-dialog';
 import { StatusBar } from './StatusBar';
 import { StartupTips } from './StartupTips';
@@ -57,7 +57,7 @@ export const ChatView: React.FC = () => {
 
       {!confirmationOptions && (
         <>
-          <ChatInput />
+          <EnhancedChatInput />
           <StatusBar />
           <CommandSuggestions />
           <ModelSelection />

@@ -10,6 +10,7 @@ export const StatusBar: React.FC = React.memo(() => {
     const snap = useSnapshot(store);
     const autoEditEnabled = snap.autoEditEnabled;
     const dbpEnabled = snap.dangerousBypassPermission;
+    const vimMode = snap.chatVimMode;
 
     return (
         <Box width="100%" justifyContent="space-between">
@@ -17,7 +18,7 @@ export const StatusBar: React.FC = React.memo(() => {
             <Text color="gray">Ctrl+C to exit</Text>
             
             {/* Right side - indicators */}
-            <Box>
+            <Box gap={1}>
                 {/* Only show auto-edit if it's enabled AND DBP is not on */}
                 {autoEditEnabled && !dbpEnabled && (
                     <Text color="cyan">
@@ -26,8 +27,24 @@ export const StatusBar: React.FC = React.memo(() => {
                 )}
                 {/* Show DBP as a badge */}
                 {dbpEnabled && (
-                    <Text backgroundColor="red" color="white" bold> BYPASS </Text>
+                    <Box 
+                        borderStyle="round"
+                        borderColor="red"
+                        paddingX={1}
+                    >
+                        <Text color="red" bold>BYPASS</Text>
+                    </Box>
                 )}
+                {/* Vim mode indicator */}
+                <Box 
+                    borderStyle="round"
+                    borderColor={vimMode === 'insert' ? 'green' : 'yellow'}
+                    paddingX={1}
+                >
+                    <Text color={vimMode === 'insert' ? 'green' : 'yellow'} bold>
+                        {vimMode === 'insert' ? 'INSERT' : 'NORMAL'}
+                    </Text>
+                </Box>
             </Box>
         </Box>
     );

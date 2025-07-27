@@ -5,7 +5,7 @@ import {GrokAgent} from "../../clanker/agent";
 import {ChatLayout} from "../components/chat/ChatLayout";
 import {CommandSuggestions} from "../components/command-suggestions";
 import {ChatHistory} from "../components/chat-history";
-import {ChatInput} from "../components/chat/ChatInput";
+import {EnhancedChatInput} from "../components/chat/EnhancedChatInput";
 import {StatusBar} from "../components/chat/StatusBar";
 import {LoadingAndStatus} from "../components/chat/LoadingAndStatus";
 import {ModelSelection} from "../components/model-selection";
@@ -75,6 +75,15 @@ export function ChatContainer() {
     useInput((inputChar: string, key: { [key: string]: boolean }) => {
         // Skip all input if confirmation is active
         if (snap.confirmationOptions) return;
+        
+        // Only handle input in insert mode (normal mode handled by EnhancedChatInput)
+        if (snap.chatVimMode === 'normal') {
+            // Still handle Ctrl+C in normal mode
+            if (inputChar.charCodeAt(0) === 3 || (key.ctrl && inputChar === 'c')) {
+                handleCtrlC();
+            }
+            return;
+        }
 
         // Check for Ctrl+C (ETX character, code 3)
         if (inputChar.charCodeAt(0) === 3 || (key.ctrl && inputChar === 'c')) {
@@ -95,9 +104,8 @@ export function ChatContainer() {
             return;
         }
 
-        // Escape key
+        // Escape key - don't call handleEscape, let EnhancedChatInput handle it
         if (key.escape) {
-            handleEscape();
             return;
         }
 
@@ -148,7 +156,7 @@ export function ChatContainer() {
                     <Box paddingX={2}>
                         <LoadingAndStatus/>
                     </Box>
-                    <ChatInput/>
+                    <EnhancedChatInput/>
                     <Box paddingX={2}>
                         <StatusBar/>
                     </Box>

@@ -48,6 +48,9 @@ export interface AppState {
     showModelSelector: boolean;
     exitConfirmation: boolean;
     exitConfirmationTime: number;
+    
+    // Vim mode for chat input
+    chatVimMode: 'normal' | 'insert';
     showCommandSuggestions: boolean;
     selectedCommandIndex: number;
     commandSuggestions: string[];
@@ -116,6 +119,7 @@ export const store = proxy<AppState>({
     showModelSelector: false,
     exitConfirmation: false,
     exitConfirmationTime: 0,
+    chatVimMode: 'insert',
     showCommandSuggestions: false,
     selectedCommandIndex: 0,
     commandSuggestions: [],
@@ -347,6 +351,10 @@ export const actions = {
 
     setCursorPosition(position: number) {
         store.cursorPosition = position;
+    },
+    
+    setChatVimMode(mode: 'normal' | 'insert') {
+        store.chatVimMode = mode;
     },
 
     addToHistory(input: string) {

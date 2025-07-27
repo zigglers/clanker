@@ -255,6 +255,28 @@ export function ChatHistory({
     const {stdout} = useStdout();
     const terminalHeight = stdout?.rows || 30;
     const terminalWidth = stdout?.columns || 80;
+    
+    // Scroll position state for vim navigation
+    const [scrollOffset, setScrollOffset] = React.useState(0);
+    
+    // Listen for page navigation events
+    React.useEffect(() => {
+        const handlePageUp = () => {
+            setScrollOffset(prev => Math.max(0, prev - 10));
+        };
+        
+        const handlePageDown = () => {
+            setScrollOffset(prev => prev + 10);
+        };
+        
+        process.stdout.on('chat:pageUp', handlePageUp);
+        process.stdout.on('chat:pageDown', handlePageDown);
+        
+        return () => {
+            process.stdout.off('chat:pageUp', handlePageUp);
+            process.stdout.off('chat:pageDown', handlePageDown);
+        };
+    }, []);
     // Account for: input (4) + status bar (2) + loading (2) + margins (4) = 12
     // No header now since logo is part of scrollable content
     const maxHeight = Math.max(5, terminalHeight - 12);
