@@ -17,6 +17,7 @@ export const AppContainer: React.FC<AppContainerProps> = ({ onRequestReload }) =
     const [showWelcome, setShowWelcome] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
     const [isInitialized, setIsInitialized] = useState(false);
+    const [agent, setAgent] = useState<GrokAgent | null>(null);
     const settingsManager = SettingsManager.getInstance();
 
     useEffect(() => {
@@ -29,6 +30,14 @@ export const AppContainer: React.FC<AppContainerProps> = ({ onRequestReload }) =
 
             // Load settings from disk
             actions.loadSettings();
+            
+            // If agent already exists in store, use it
+            if (store.agent) {
+                setAgent(store.agent);
+                setShowWelcome(true);
+                setIsInitialized(true);
+                return;
+            }
             
             // Check if we have settings
             const { settings, isValid } = settingsManager.loadSettings();
@@ -44,7 +53,7 @@ export const AppContainer: React.FC<AppContainerProps> = ({ onRequestReload }) =
                         baseURL = providerConfig.baseURL;
                     }
 
-                    const agent = new GrokAgent({
+                    const newAgent = new GrokAgent({
                         apiKey: settings.apiKey,
                         baseURL,
                         model: settings.model || ProviderModels.grok.defaultModel,
@@ -52,10 +61,11 @@ export const AppContainer: React.FC<AppContainerProps> = ({ onRequestReload }) =
                     });
 
                     // Wait for tools to load
-                    await agent.waitForToolsToLoad();
+                    await newAgent.waitForToolsToLoad();
                     
-                    // Set agent in global store
-                    actions.setAgent(agent);
+                    // Set agent in global store and local state
+                    actions.setAgent(newAgent);
+                    setAgent(newAgent);
                     
                     // Show welcome screen
                     setShowWelcome(true);
@@ -91,8 +101,8 @@ export const AppContainer: React.FC<AppContainerProps> = ({ onRequestReload }) =
             }
 
             // Dispose of existing agent if any
-            if (store.agent) {
-                store.agent.dispose();
+            if (agent) {
+                agent.dispose();
             }
 
             // Create new agent with all the proper settings
@@ -106,8 +116,9 @@ export const AppContainer: React.FC<AppContainerProps> = ({ onRequestReload }) =
             // Wait for tools to load
             await newAgent.waitForToolsToLoad();
 
-            // Update the global store
+            // Update the global store and local state
             actions.setAgent(newAgent);
+            setAgent(newAgent);
             actions.clearMessages();
 
             // Update store settings
@@ -132,7 +143,7 @@ export const AppContainer: React.FC<AppContainerProps> = ({ onRequestReload }) =
 
     const handleSettingsCancel = () => {
         // If we have an agent, just close settings
-        if (store.agent) {
+        if (agent) {
             setShowSettings(false);
         }
         // Otherwise, we can't proceed without settings
@@ -148,21 +159,19 @@ export const AppContainer: React.FC<AppContainerProps> = ({ onRequestReload }) =
         return (
             <SettingsScreen 
                 onComplete={handleSettingsComplete}
-                onCancel={store.agent ? handleSettingsCancel : undefined}
+                onCancel={agent ? handleSettingsCancel : undefined}
             />
         );
     }
 
     // Show welcome screen
-    // Use store.agent directly instead of snap.agent to avoid proxy issues
-    if (showWelcome && store.agent) {
-        return <WelcomeScreen agent={store.agent} onComplete={handleWelcomeComplete} />;
+    if (showWelcome && agent) {
+        return <WelcomeScreen agent={agent} onComplete={handleWelcomeComplete} />;
     }
 
-    // Show main app with agent from store
-    // Use store.agent directly instead of snap.agent to avoid proxy issues
-    if (store.agent) {
-        return <StageRouter agent={store.agent} />;
+    // Show main app with agent
+    if (agent) {
+        return <StageRouter agent={agent} />;
     }
 
     // This shouldn't happen, but show settings as fallback
