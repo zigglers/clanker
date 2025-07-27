@@ -269,12 +269,18 @@ export function ChatHistory({
             setScrollOffset(prev => prev + 10);
         };
         
+        // Increase max listeners to prevent warnings
+        const currentMaxListeners = process.stdout.getMaxListeners();
+        process.stdout.setMaxListeners(currentMaxListeners + 2);
+        
         process.stdout.on('chat:pageUp', handlePageUp);
         process.stdout.on('chat:pageDown', handlePageDown);
         
         return () => {
             process.stdout.off('chat:pageUp', handlePageUp);
             process.stdout.off('chat:pageDown', handlePageDown);
+            // Restore original max listeners
+            process.stdout.setMaxListeners(currentMaxListeners);
         };
     }, []);
     // Account for: input (4) + status bar (2) + loading (2) + margins (4) = 12

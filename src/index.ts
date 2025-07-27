@@ -16,6 +16,10 @@ import {store} from "./store";
 // Load environment variables
 dotenv.config({quiet: true});
 
+// Increase max event listeners to prevent warnings
+// This is needed because we use multiple event listeners in our UI components
+require('events').EventEmitter.defaultMaxListeners = 20;
+
 // Display functions are now handled by React components
 
 // Load API key from user settings if not in environment
