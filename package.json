@@ -20,6 +20,9 @@
     "README.md",
     "dist/tool-manifest.json"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsup && node scripts/generate-tool-manifest.js",
     "dev": "node --import tsx src/index.ts",
