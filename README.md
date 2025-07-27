@@ -11,14 +11,6 @@
   <p>Not just suggestions—real actions, real changes, real time.</p>
 </div>
 
-## Demo
-
-<div align="center">
-  <!-- Replace with actual demo GIF/video -->
-  <img src="https://via.placeholder.com/800x400/1a1a1a/00D9FF?text=Demo+Video+Coming+Soon" alt="Clanker Demo" width="800">
-  <p><em>Refactoring an entire codebase with natural language</em></p>
-</div>
-
 ## Quick Start
 
 ```bash
@@ -27,6 +19,13 @@ clanker
 ```
 
 That's it. Clanker will guide you through setup on first run.
+
+## What's New in v0.2.0
+
+- 🚀 **Improved Performance**: First message no longer has 40-second delay
+- 🐛 **Fixed Chat Issues**: Messages now display correctly in the UI
+- 🎨 **Better Error Handling**: System messages render properly
+- 🔧 **Cleaner Output**: Suppressed module warning messages
 
 ## What Can It Do?
 
@@ -53,89 +52,151 @@ That's it. Clanker will guide you through setup on first run.
 ## Key Features
 
 ### 🧠 **Intelligent File Editing**
-Advanced order-invariant diff algorithm for reliable file editing. Multiple edit strategies ensure changes are applied correctly even in complex scenarios. [Learn more →](docs/architecture.md#order-invariant-diff-algorithm)
+Advanced order-invariant diff algorithm for reliable file editing. Multiple edit strategies ensure changes are applied correctly even in complex scenarios.
 
 ### 🛠️ **Extensible Tool System**
-Every action is a tool. Create your own in minutes:
+Build and share custom tools with the community. Every action is a tool, and creating new ones is simple:
+
 ```typescript
-const prReadyTool = createTool()
-  .id('pr_ready')
-  .name('PR Ready Check')
-  .description('Check if code is ready for PR')
-  .execute(async (args, context) => {
+import { defineTool } from '@ziggler/clanker';
+
+export default defineTool({
+  id: 'pr_ready',
+  name: 'PR Ready Check',
+  description: 'Check if code is ready for PR',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      path: { type: 'string', description: 'Project path' }
+    },
+    required: ['path']
+  },
+  execute: async ({ path }) => {
     // Run your checks here
-    const testsPass = await runTests();
-    const lintPass = await checkLinting();
-    const typesOk = await verifyTypes();
+    const testsPass = await runTests(path);
+    const lintPass = await checkLinting(path);
+    const typesOk = await verifyTypes(path);
     
     return { 
       success: testsPass && lintPass && typesOk,
-      output: 'All checks passed!'
+      output: 'All checks passed! Ready for PR.'
     };
-  })
-  .build();
-
-export default prReadyTool;
+  }
+});
 ```
-[Tool docs →](docs/tools.md)
 
 ### 🎨 **Beautiful Terminal UI**
 React-powered terminal interface with:
-- Syntax highlighting
-- Real-time progress
-- Keyboard navigation  
-- Confirmation dialogs
+- Syntax highlighting for code
+- Real-time streaming responses
+- Progress indicators for long operations
+- Keyboard shortcuts for efficiency
 
 ### 🔐 **Safety First**
-- Confirmation prompts for destructive actions
-- Dry-run mode for testing
+- Confirmation prompts for file modifications
+- Dry-run mode for testing changes
 - Full operation history
-- Rollback capabilities
+- Built-in safeguards against destructive operations
 
-## 📦 Package Manager
+## Tool Ecosystem
 
-Clanker includes a built-in package manager for discovering, installing, and managing tools:
+### Installing Tools
 
-### Quick Start
 ```bash
-# Search for tools
-clanker --search "git"           # or -S
+# Browse available tools
+clanker tools list-available
 
-# Install tools
-clanker --install ziggler/core   # or -I
-clanker --install community/git-tools@1.2.0
+# Install official tools
+clanker tools install bash
+clanker tools install multi_edit
+clanker tools install search
 
-# List your tools
-clanker --list-installed         # or -L
-
-# Update tools
-clanker --update ziggler/core
-
-# Uninstall tools  
-clanker --uninstall community/git-tools  # or -U
+# Install community tools
+clanker tools install community/git-workflow
+clanker tools install community/react-refactor
 ```
+
+### Core Tools Available
+
+- **bash** - Execute shell commands safely
+- **multi_edit** - Advanced file editing with conflict resolution
+- **search** - Fast code search with ripgrep
+- **view_file** - Read and analyze files
+- **write_to_file** - Create or overwrite files
+- **list** - Browse directory contents
+- **pwd** - Show current directory
+- **remove** - Delete files and directories
+- **create_todo_list** - Task management
+- **update_todo_list** - Update task status
+- **summarize** - Summarize long content
 
 ### Creating Your Own Tools
 
 ```bash
-# Create a new tool project
-npx create-clanker-tool
+# Start with our template
+git clone https://github.com/ziggle-dev/clanker-tool-template my-tool
+cd my-tool
 
-# Develop with hot reloading
-npm run dev:watch
+# Install dependencies
+npm install
 
-# Publish to the registry
-npm run publish:tool
+# Develop with hot reload
+npm run dev
+
+# Test locally
+npm run build
+clanker tools install ./dist
+
+# Submit to registry
+npm run submit
 ```
 
-[🚀 Quick Start Guide →](docs/quick-start-tool-dev.md) | [📚 Full Documentation →](docs/package-manager.md)
+## Configuration
 
-### Tool Development Workflow
+Clanker stores configuration in `~/.clanker/`:
 
-1. **Create**: Use `create-clanker-tool` to scaffold your project
-2. **Develop**: Test locally with `npm run install:local`
-3. **Watch**: Use `--watch-tools` for hot reloading during development
-4. **Publish**: Submit to registry with `--publish`
+```
+~/.clanker/
+├── settings.json      # API keys and preferences
+├── tools/             # Installed tools
+└── history/           # Command history
+```
+
+### Supported AI Providers
+
+- **xAI Grok** (default) - Fast and capable
+- **OpenAI** - GPT-4 and other models
+- **Anthropic** - Claude models
+- **Custom** - Any OpenAI-compatible endpoint
+
+Configure with:
+```bash
+clanker config set provider grok
+clanker config set api-key YOUR_API_KEY
+```
+
+## Common Workflows
+
+### Refactoring a Codebase
+```bash
+> "Update all imports from 'lib/' to '@/lib/'"
+> "Convert all class components to functional components"
+> "Add TypeScript types to all exported functions"
+```
+
+### Setting Up a New Project
+```bash
+> "Create a Next.js app with TypeScript and Tailwind"
+> "Set up ESLint and Prettier with sensible defaults"
+> "Create a GitHub Actions workflow for CI/CD"
+```
+
+### Debugging Issues
+```bash
+> "Find all console.error calls and add stack traces"
+> "Add debug logging to the authentication flow"
+> "Check for potential race conditions in async code"
+```
 
 ## Philosophy
 
@@ -145,77 +206,52 @@ Instead of:
 > "Here's how you could refactor this code..."
 
 Clanker says:
-> "I'll refactor this code. Here's what I'm changing... Approve?"
+> "I'll refactor this code. Here's what I'm changing... Approve? [Y/n]"
 
-[Read our full philosophy →](docs/philosophy.md)
+This shift from passive suggestions to active assistance means you spend less time copying code and more time reviewing and shipping changes.
 
 ## Documentation
 
-- 🚀 **[Getting Started](docs/getting-started.md)** - Installation and first steps
-- 📦 **[Package Manager](docs/package-manager.md)** - Tool discovery and management
-- 🔧 **[Tool Development](docs/tools.md)** - Create custom tools
-- 🏗️ **[Architecture](docs/architecture.md)** - How Clanker works under the hood
-- 📚 **[API Reference](docs/api.md)** - Complete API documentation
-
-## Use Cases
-
-<table>
-<tr>
-<td width="50%">
-
-**🔄 Refactoring**
-- Update imports across projects
-- Rename variables consistently  
-- Modernize syntax patterns
-- Extract common functions
-
-</td>
-<td width="50%">
-
-**📝 Code Generation**
-- Create components from specs
-- Generate test suites
-- Scaffold new features
-- Build API endpoints
-
-</td>
-</tr>
-<tr>
-<td width="50%">
-
-**🐛 Debugging**
-- Add logging strategically
-- Trace execution paths
-- Identify error patterns
-- Fix type issues
-
-</td>
-<td width="50%">
-
-**📦 Project Management**
-- Update dependencies safely
-- Configure build tools
-- Set up CI/CD pipelines
-- Manage git workflows
-
-</td>
-</tr>
-</table>
+- 🚀 **[Getting Started](https://github.com/ziggle-dev/clanker/wiki/Getting-Started)** - Installation and first steps
+- 🛠️ **[Tool Development](https://github.com/ziggle-dev/clanker/wiki/Tool-Development)** - Create custom tools
+- 📦 **[Tool Registry](https://github.com/ziggle-dev/clanker-tools)** - Browse available tools
+- 🏗️ **[Architecture](https://github.com/ziggle-dev/clanker/wiki/Architecture)** - How Clanker works
+- 📚 **[API Reference](https://github.com/ziggle-dev/clanker/wiki/API-Reference)** - Complete API docs
 
 ## Contributing
 
-We'd love your help making Clanker better!
+We welcome contributions! Here's how to get involved:
 
 - 🐛 [Report bugs](https://github.com/ziggle-dev/clanker/issues/new?template=bug_report.md)
 - 💡 [Request features](https://github.com/ziggle-dev/clanker/issues/new?template=feature_request.md)  
-- 🛠️ [Submit tools](https://github.com/ziggle-dev/clanker/issues/new?template=tool_submission.md)
-- 📖 [Improve docs](CONTRIBUTING.md)
+- 🛠️ [Submit tools](https://github.com/ziggle-dev/clanker-tools/issues/new?template=tool_submission.md)
+- 📖 [Improve docs](https://github.com/ziggle-dev/clanker/wiki)
+
+### Development Setup
+
+```bash
+# Clone the repo
+git clone https://github.com/ziggle-dev/clanker.git
+cd clanker
+
+# Install dependencies
+npm install
+
+# Run in development mode
+npm run dev
+
+# Run tests
+npm test
+
+# Build for production
+npm run build
+```
 
 ## Community
 
-- 💬 [Discussions](https://github.com/ziggle-dev/clanker/discussions) - Ask questions, share ideas
+- 💬 [GitHub Discussions](https://github.com/ziggle-dev/clanker/discussions) - Ask questions, share ideas
 - 🌟 [Show & Tell](https://github.com/ziggle-dev/clanker/discussions/categories/show-and-tell) - Share your tools and workflows
-- 🐦 [Twitter](https://twitter.com/ziggledev) - Updates and tips
+- 🐛 [Issue Tracker](https://github.com/ziggle-dev/clanker/issues) - Report bugs and request features
 
 ## License
 
@@ -227,7 +263,7 @@ MIT © [Ziggler](https://github.com/ziggle-dev)
   <p><strong>Stop copying suggestions. Start shipping changes.</strong></p>
   <p>
     <a href="https://github.com/ziggle-dev/clanker">⭐ Star on GitHub</a> • 
-    <a href="docs/getting-started.md">📚 Get Started</a> • 
+    <a href="https://github.com/ziggle-dev/clanker/wiki/Getting-Started">📚 Get Started</a> • 
     <a href="https://twitter.com/intent/tweet?text=Check%20out%20Clanker%20-%20AI%20agents%20that%20actually%20DO%20things!&url=https://github.com/ziggle-dev/clanker">🐦 Share</a>
   </p>
 </div>
