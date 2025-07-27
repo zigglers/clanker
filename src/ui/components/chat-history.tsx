@@ -310,13 +310,8 @@ export function ChatHistory({
                 <Box paddingX={2} flexShrink={0} height={8}>
                     <Box justifyContent="center" marginBottom={1}>
                         <Gradient name="passion">
-                            <BigText text="CLANK" font="3d" />
+                            <BigText text="CLANK" font="chrome" />
                         </Gradient>
-                    </Box>
-                    <Box flexDirection="column" marginBottom={0}>
-                        <Text dimColor>
-                            Type your request in natural language. Type '/exit' or press Ctrl+C to quit.
-                        </Text>
                     </Box>
                 </Box>
             </Box>
