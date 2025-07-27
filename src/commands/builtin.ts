@@ -175,6 +175,59 @@ export function registerBuiltinCommands() {
         }
     });
     
+    // Tools command
+    registerCommand({
+        name: 'tools',
+        description: 'List all registered tools',
+        category: 'Tools',
+        exec: () => {
+            // Get the agent from store
+            const agent = store.agent;
+            if (!agent) {
+                console.log('❌ No agent available');
+                return;
+            }
+            
+            const registry = agent.getRegistry();
+            const tools = registry.list();
+            
+            if (tools.length === 0) {
+                console.log('📦 No tools registered');
+                return;
+            }
+            
+            console.log(`\n📦 Registered Tools (${tools.length} total):\n`);
+            
+            // Group tools by category
+            const toolsByCategory: Record<string, Array<{id: string; name: string; description: string}>> = {};
+            
+            tools.forEach(toolId => {
+                const tool = registry.get(toolId);
+                if (tool) {
+                    const category = tool.definition.category || 'Uncategorized';
+                    if (!toolsByCategory[category]) {
+                        toolsByCategory[category] = [];
+                    }
+                    toolsByCategory[category].push({
+                        id: toolId,
+                        name: tool.definition.name || toolId,
+                        description: tool.definition.description || 'No description'
+                    });
+                }
+            });
+            
+            // Display tools by category
+            Object.entries(toolsByCategory).forEach(([category, categoryTools]) => {
+                console.log(`${category}:`);
+                categoryTools.forEach(tool => {
+                    console.log(`  • ${tool.name} (${tool.id})`);
+                    console.log(`    ${tool.description}`);
+                });
+                console.log('');
+            });
+        }
+    });
+    
     // Settings command
     registerCommand({
         name: 'settings',
