@@ -4,6 +4,7 @@
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import * as os from 'os';
 import { debug } from '../utils/debug-logger';
 import { 
   ToolRegistry, 
@@ -22,7 +23,7 @@ export class RegistryClient {
 
   constructor(options: PackageManagerOptions = {}) {
     this.registryUrl = options.registryUrl || 'https://raw.githubusercontent.com/zigglers/rachet/main';
-    this.cacheDir = options.cacheDir || path.join(process.env.HOME || '', '.clanker', 'cache');
+    this.cacheDir = options.cacheDir || path.join(os.homedir(), '.clanker', 'cache');
     this.repoManager = new RepositoryManager();
     
     // Get cache timeout from settings
@@ -128,7 +129,7 @@ export class RegistryClient {
         
         const metadataResponse = await fetch(metadataUrl);
         if (metadataResponse.ok) {
-          const detailedMetadata = await metadataResponse.json();
+          const detailedMetadata = await metadataResponse.json() as any;
           debug.log(`[Registry] Got detailed metadata:`, detailedMetadata);
           
           // Convert to expected format
@@ -146,7 +147,7 @@ export class RegistryClient {
           
           // Convert versions format
           if (detailedMetadata.versions) {
-            for (const [version, versionInfo] of Object.entries(detailedMetadata.versions)) {
+            for (const [version, versionInfo] of Object.entries(detailedMetadata.versions as Record<string, any>)) {
               metadata.versions[version] = {
                 date: (versionInfo as any).date || new Date().toISOString(),
                 minClankerVersion: (versionInfo as any).minClankerVersion || '0.1.0',

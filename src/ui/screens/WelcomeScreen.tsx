@@ -62,14 +62,11 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onComplete }) => {
                 
                 // Get all tools from the registry
                 loadedTools = [];
-                toolRegistry.list().forEach(toolId => {
-                    const tool = toolRegistry.get(toolId);
-                    if (tool) {
-                        loadedTools.push({
-                            id: toolId,
-                            name: tool.definition.name || toolId
-                        });
-                    }
+                toolRegistry.list().forEach(toolDef => {
+                    loadedTools.push({
+                        id: toolDef.id,
+                        name: toolDef.name
+                    });
                 });
                 
                 // If still no tools, check for installed tools in ~/.clanker/tools
@@ -77,14 +74,11 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onComplete }) => {
                     // Add a small delay and retry once
                     await new Promise(resolve => setTimeout(resolve, 500));
                     
-                    toolRegistry.list().forEach(toolId => {
-                        const tool = toolRegistry.get(toolId);
-                        if (tool) {
-                            loadedTools.push({
-                                id: toolId,
-                                name: tool.definition.name || toolId
-                            });
-                        }
+                    toolRegistry.list().forEach(toolDef => {
+                        loadedTools.push({
+                            id: toolDef.id,
+                            name: toolDef.name
+                        });
                     });
                 }
                 
@@ -209,7 +203,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onComplete }) => {
                         ) : toolsLoaded && tools.length === 0 ? (
                             <Box marginTop={1}>
                                 <Text color="gray">No additional tools installed</Text>
-                                <Text color="gray" fontSize={10}>Core tools are built-in</Text>
+                                <Text color="gray">Core tools are built-in</Text>
                             </Box>
                         ) : (
                             <Box marginTop={1}>

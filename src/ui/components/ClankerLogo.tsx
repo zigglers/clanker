@@ -44,17 +44,18 @@ export const ClankerLogo: React.FC<ClankerLogoProps> = ({agent, onComplete}) => 
 
     // Load tools
     useEffect(() => {
-        // const agent = new GrokAgent({
-        //     apiKey,
-        //     baseURL,
-        //     model,
-        //     loadDynamicTools: options.loadDynamicTools,
-        //     dynamicToolsPath: options.toolsPath,
-        //     watchTools: options.watchTools
-        // });
-        //
-        // Wait for tools to load
-        await agent.waitForToolsToLoad()
+        const loadTools = async () => {
+            // const agent = new GrokAgent({
+            //     apiKey,
+            //     baseURL,
+            //     model,
+            //     loadDynamicTools: options.loadDynamicTools,
+            //     dynamicToolsPath: options.toolsPath,
+            //     watchTools: options.watchTools
+            // });
+            //
+            // Wait for tools to load
+            await agent.waitForToolsToLoad()
 
         const registry = agent.getRegistry();
         const tools = registry.list();
@@ -80,8 +81,11 @@ export const ClankerLogo: React.FC<ClankerLogoProps> = ({agent, onComplete}) => 
             name: tool.name
         }));
 
-        setTools(metaInf);
-        setToolsLoaded(true);
+            setTools(metaInf);
+            setToolsLoaded(true);
+        };
+        
+        loadTools();
     }, [agent]);
 
     // Auto-advance after tools are loaded
@@ -201,7 +205,7 @@ export const ClankerLogo: React.FC<ClankerLogoProps> = ({agent, onComplete}) => 
                         ) : toolsLoaded && tools.length === 0 ? (
                             <Box marginTop={1}>
                                 <Text color="gray">No additional tools installed</Text>
-                                <Text color="gray" fontSize={10}>Core tools are built-in</Text>
+                                <Text color="gray">Core tools are built-in</Text>
                             </Box>
                         ) : (
                             <Box marginTop={1}>

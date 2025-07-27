@@ -187,15 +187,34 @@ export class ToolLoader {
             return;
         }
 
-        // Check if this is a package-managed tool directory with 'current' symlink
-        const currentLink = entries.find(entry => entry.name === 'current' && entry.isSymbolicLink());
-        if (currentLink) {
-            // This is a versioned tool directory, load from current version
-            const currentPath = path.join(directory, 'current', 'index.js');
-            if (await this.exists(currentPath)) {
-                debug.log(`[ToolLoader] Found package-managed tool at ${currentPath}`);
-                await this.loadToolFile(currentPath);
-                return; // Don't scan subdirectories for versioned tools
+        // Check if this is a package-managed tool directory with 'current' pointer
+        const currentEntry = entries.find(entry => entry.name === 'current');
+        if (currentEntry) {
+            // This is a versioned tool directory
+            let currentVersion: string | null = null;
+            
+            if (currentEntry.isSymbolicLink()) {
+                // Unix: follow symlink
+                const currentPath = path.join(directory, 'current', 'index.js');
+                if (await this.exists(currentPath)) {
+                    debug.log(`[ToolLoader] Found package-managed tool at ${currentPath}`);
+                    await this.loadToolFile(currentPath);
+                    return; // Don't scan subdirectories for versioned tools
+                }
+            } else if (currentEntry.isFile()) {
+                // Windows: read version from file
+                try {
+                    currentVersion = await fs.readFile(path.join(directory, 'current'), 'utf-8');
+                    currentVersion = currentVersion.trim();
+                    const versionedPath = path.join(directory, currentVersion, 'index.js');
+                    if (await this.exists(versionedPath)) {
+                        debug.log(`[ToolLoader] Found package-managed tool at ${versionedPath} (Windows mode)`);
+                        await this.loadToolFile(versionedPath);
+                        return; // Don't scan subdirectories for versioned tools
+                    }
+                } catch (error) {
+                    debug.error(`[ToolLoader] Failed to read current version pointer: ${error}`);
+                }
             }
         }
 

@@ -13,11 +13,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changed default registry URL from github.com/ziggle-dev/clanker-tools to github.com/zigglers/rachet
 - Removed core-tools repository as it's no longer needed
 - All @ziggler/clanker dependencies now use "*" to always get latest version
+- Removed old dynamic tools system in favor of new package manager
 
 ### Fixed
 - Updated all documentation to reflect new repository structure
 - Fixed all GitHub URLs to point to zigglers organization
 - Updated CI/CD workflows for new repository names
+- Fixed Windows compatibility issues in package manager:
+  - Replaced process.env.HOME with os.homedir() for cross-platform compatibility
+  - Use version pointer files instead of symlinks on Windows to avoid permission issues
+  - Updated tool loader to handle both Unix symlinks and Windows pointer files
 
 ## [0.2.3] - 2025-07-27
 

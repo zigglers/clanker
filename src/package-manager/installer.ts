@@ -4,6 +4,7 @@
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import * as os from 'os';
 import * as crypto from 'crypto';
 import { debug } from '../utils/debug-logger';
 import { RegistryClient } from './registry';
@@ -25,7 +26,7 @@ export class ToolInstaller {
   private experimental: ExperimentalToolManager;
 
   constructor(options: PackageManagerOptions = {}) {
-    this.toolsDir = options.toolsDir || path.join(process.env.HOME || '', '.clanker', 'tools');
+    this.toolsDir = options.toolsDir || path.join(os.homedir(), '.clanker', 'tools');
     this.manifestPath = path.join(this.toolsDir, 'manifest.json');
     this.registry = new RegistryClient(options);
     this.resolver = new VersionResolver();
@@ -202,14 +203,22 @@ export class ToolInstaller {
     // Write tool file
     await fs.writeFile(toolFile, content);
     
-    // Update current symlink
-    const currentLink = path.join(this.toolsDir, tool.org, tool.name, 'current');
+    // Update current version pointer
+    // On Windows, use a file instead of symlink to avoid permission issues
+    const currentPointer = path.join(this.toolsDir, tool.org, tool.name, 'current');
     try {
-      await fs.unlink(currentLink);
+      await fs.unlink(currentPointer);
     } catch {
       // Ignore if doesn't exist
     }
-    await fs.symlink(version, currentLink);
+    
+    if (process.platform === 'win32') {
+      // On Windows, write version to a file
+      await fs.writeFile(currentPointer, version);
+    } else {
+      // On Unix, use symlink
+      await fs.symlink(version, currentPointer);
+    }
     
     return toolFile;
   }

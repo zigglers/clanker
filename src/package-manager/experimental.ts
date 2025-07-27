@@ -4,6 +4,7 @@
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import * as os from 'os';
 import {debug} from '../utils/debug-logger';
 import {
     InstalledTool,
@@ -27,7 +28,7 @@ export class ExperimentalToolManager {
     private registryUrl: string;
 
     constructor(private options: PackageManagerOptions = {}) {
-        const baseDir = options.toolsDir || path.join(process.env.HOME || '', '.clanker', 'tools');
+        const baseDir = options.toolsDir || path.join(os.homedir(), '.clanker', 'tools');
         this.manifestPath = path.join(baseDir, 'experimental-manifest.json');
         this.registryUrl = 'https://api.github.com/repos/zigglers/rachet';
     }
@@ -43,7 +44,7 @@ export class ExperimentalToolManager {
 
         // Check config file
         try {
-            const configPath = path.join(process.env.HOME || '', '.clanker', 'config.json');
+            const configPath = path.join(os.homedir(), '.clanker', 'config.json');
             const config = await fs.readFile(configPath, 'utf-8');
             const parsed = JSON.parse(config);
             return parsed.experimental?.enabled === true;
@@ -56,7 +57,7 @@ export class ExperimentalToolManager {
      * Enable experimental mode
      */
     async enable(): Promise<void> {
-        const configPath = path.join(process.env.HOME || '', '.clanker', 'config.json');
+        const configPath = path.join(os.homedir(), '.clanker', 'config.json');
         let config: Record<string, unknown>;
 
         try {
@@ -251,7 +252,7 @@ export class ExperimentalToolManager {
 
         // Download tool files
         const toolDir = path.join(
-            this.options.toolsDir || path.join(process.env.HOME || '', '.clanker', 'tools'),
+            this.options.toolsDir || path.join(os.homedir(), '.clanker', 'tools'),
             org,
             name,
             branchVersion

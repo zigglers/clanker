@@ -201,19 +201,16 @@ export function registerBuiltinCommands() {
             // Group tools by category
             const toolsByCategory: Record<string, Array<{ id: string; name: string; description: string }>> = {};
 
-            tools.forEach(toolId => {
-                const tool = registry.get(toolId);
-                if (tool) {
-                    const category = tool.definition.category || 'Uncategorized';
-                    if (!toolsByCategory[category]) {
-                        toolsByCategory[category] = [];
-                    }
-                    toolsByCategory[category].push({
-                        id: toolId,
-                        name: tool.definition.name || toolId,
-                        description: tool.definition.description || 'No description'
-                    });
+            tools.forEach(toolDef => {
+                const category = toolDef.category || 'Uncategorized';
+                if (!toolsByCategory[category]) {
+                    toolsByCategory[category] = [];
                 }
+                toolsByCategory[category].push({
+                    id: toolDef.id,
+                    name: toolDef.name,
+                    description: toolDef.description || 'No description'
+                });
             });
 
             // Display tools by category

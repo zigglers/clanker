@@ -21,7 +21,7 @@ export interface CommandDefinition {
     description: string;
     category?: string;
     arguments?: ArgumentDefinition[];
-    exec: (args: Record<string, never>) => void | Promise<void>;
+    exec: (args: Record<string, any>) => void | Promise<void>;
 }
 
 // Command registry interface
