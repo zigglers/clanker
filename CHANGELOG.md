@@ -5,6 +5,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.3] - 2025-07-27
+
+### Added
+- Auto-cache update mechanism that refreshes registry cache on any command if older than configured timeout
+- `cacheTimeoutMinutes` setting in settings.json (default: 5 minutes)
+- Built-in tools now properly load from manifest
+
+### Fixed
+- `/tools` command now correctly shows currently loaded tools
+- Registry client now always fetches from main branch instead of GitHub releases
+- Fixed agent not being passed to command handlers after useAgent hook refactor
+- Package manager now shows all 5 tools (bash, create-todo-list, list, pwd, update-todo-list)
+
+### Changed
+- Removed GitHub releases check in favor of direct registry.json fetching
+- Cache timeout is now configurable via settings
+
+## [0.2.2] - 2025-07-27
+
+### Fixed
+- Fixed `/tools` command by getting agent from store at execution time
+- Re-enabled built-in tools loading by setting `loadBuiltins: true`
+
+## [0.2.1] - 2025-07-27
+
+### Added
+- NODE_TYPELESS_PACKAGE_JSON warning suppression in npm scripts
+
+### Fixed
+- Chat functionality completely broken - Enter key not working
+- Messages not displaying in UI despite being in store
+- OpenAI SDK "Cannot read private member" error with Valtio proxy
+- 40-second delay on first message due to token counter initialization
+- TypeScript type errors with OpenAI SDK tool_choice parameter
+- React closure issues with stale agent values
+
+### Changed
+- Using Valtio's `ref()` to prevent agent from being wrapped in Proxy
+- Removed token counting to improve performance
+- Updated all components to use `useAgent` hook instead of props
+- System messages now render with warning icon
+
+### Removed
+- All debug logging and test files
+
 ## [0.2.0] - 2025-07-27
 
 ### Changed
