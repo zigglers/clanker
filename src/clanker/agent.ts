@@ -13,7 +13,7 @@ import {
 } from '../registry';
 import { createToolExecutorWithRetry } from '../registry/retry-executor';
 import {EventEmitter} from 'events';
-import {TokenCounter, createTokenCounter} from '../utils/token-counter';
+// import {TokenCounter, createTokenCounter} from '../utils/token-counter';
 import {debug} from '../utils/debug-logger';
 import * as path from 'path';
 
@@ -45,7 +45,7 @@ export class GrokAgent extends EventEmitter {
     private registry: ToolRegistry;
     private toolLoader?: ToolLoader;
     private executeToolWithRegistry: (name: string, args: Record<string, unknown>) => Promise<ToolResult>;
-    private tokenCounter: TokenCounter;
+    // private tokenCounter: TokenCounter;
 
     constructor(options: GrokAgentOptions) {
         super();
@@ -56,7 +56,7 @@ export class GrokAgent extends EventEmitter {
         );
         this.model = options.model || 'grok-3-latest';
         this.maxToolRounds = options.maxToolRounds || 30;
-        this.tokenCounter = createTokenCounter(this.model);
+        // this.tokenCounter = createTokenCounter(this.model);
 
         // Create registry
         this.registry = createToolRegistry();
@@ -128,7 +128,7 @@ export class GrokAgent extends EventEmitter {
         debug.log('[GrokAgent] streamChat called');
         let rounds = 0;
         let currentMessages = [...messages];
-        let totalTokens = this.tokenCounter.countMessageTokens(currentMessages as never); // Start with initial message tokens
+        let totalTokens = 0; // this.tokenCounter.countMessageTokens(currentMessages as never); // Start with initial message tokens
 
         while (rounds < this.maxToolRounds) {
             // Use real streaming from Grok API
@@ -181,8 +181,8 @@ export class GrokAgent extends EventEmitter {
                     };
 
                     // Update token count in real-time
-                    const currentOutputTokens = this.tokenCounter.estimateStreamingTokens(accumulatedContent) +
-                        (accumulatedToolCalls.length > 0 ? this.tokenCounter.countTokens(JSON.stringify(accumulatedToolCalls)) : 0);
+                    const currentOutputTokens = 0; // this.tokenCounter.estimateStreamingTokens(accumulatedContent) +
+                        // (accumulatedToolCalls.length > 0 ? this.tokenCounter.countTokens(JSON.stringify(accumulatedToolCalls)) : 0);
 
                     yield {
                         type: 'token_count',
@@ -220,7 +220,7 @@ export class GrokAgent extends EventEmitter {
                 currentMessages.push(assistantMessage);
 
                 // Update total tokens to include the assistant message
-                totalTokens = this.tokenCounter.countMessageTokens(currentMessages as never);
+                totalTokens = 0; // this.tokenCounter.countMessageTokens(currentMessages as never);
 
                 // Add tool results and emit them
                 for (let i = 0; i < toolResults.length; i++) {
@@ -240,7 +240,7 @@ export class GrokAgent extends EventEmitter {
                     currentMessages.push(toolMessage);
 
                     // Update total tokens after each tool result
-                    totalTokens = this.tokenCounter.countMessageTokens(currentMessages as never);
+                    totalTokens = 0; // this.tokenCounter.countMessageTokens(currentMessages as never);
 
                     // Emit updated token count
                     yield {
@@ -427,7 +427,7 @@ export class GrokAgent extends EventEmitter {
 
     // Clean up resources
     dispose(): void {
-        this.tokenCounter.dispose();
+        // this.tokenCounter.dispose();
         if (this.toolLoader) {
             this.toolLoader.cleanup();
         }
