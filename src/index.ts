@@ -11,6 +11,7 @@ import {ConfirmationService} from "./utils/confirmation-service";
 import {setDebugMode, debug} from "./utils/debug-logger";
 import {PackageManager} from "./package-manager";
 import {store} from "./store";
+import {EventEmitter} from 'events';
 // Display functions no longer needed - using React components instead
 
 // Load environment variables
@@ -18,7 +19,7 @@ dotenv.config({quiet: true});
 
 // Increase max event listeners to prevent warnings
 // This is needed because we use multiple event listeners in our UI components
-require('events').EventEmitter.defaultMaxListeners = 20;
+EventEmitter.defaultMaxListeners = 20;
 
 // Display functions are now handled by React components
 
