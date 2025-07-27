@@ -11,6 +11,10 @@
   <p>Not just suggestions—real actions, real changes, real time.</p>
 </div>
 
+## Demo
+
+https://github.com/user-attachments/assets/2465c9b7-8f13-4a39-9486-f7ca032dadc4
+
 ## Quick Start
 
 ```bash
