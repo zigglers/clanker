@@ -443,6 +443,9 @@ program
 
             // No core tools - all tools come from registry
 
+            // Clear the screen before rendering
+            console.clear();
+            
             // Always render AppContainer - it will handle showing settings if needed
             const {AppContainer} = await import("./ui/containers/AppContainer");
             const app = render(React.createElement(AppContainer, {}));

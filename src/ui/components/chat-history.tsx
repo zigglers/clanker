@@ -254,6 +254,7 @@ export function ChatHistory({
     // Get terminal dimensions
     const {stdout} = useStdout();
     const terminalHeight = stdout?.rows || 30;
+    const terminalWidth = stdout?.columns || 80;
     // Account for: input (4) + status bar (2) + loading (2) + margins (4) = 12
     // No header now since logo is part of scrollable content
     const maxHeight = Math.max(5, terminalHeight - 12);
@@ -332,10 +333,10 @@ export function ChatHistory({
     const contentHeight = maxHeight - headerHeight;
 
     return (
-        <Box flexDirection="column" height={maxHeight}>
+        <Box flexDirection="column" height={maxHeight} width="100%">
             {/* Fixed header */}
-            <Box flexDirection="column" flexShrink={0} height={headerHeight}>
-                <Box flexDirection="row" justifyContent="space-between" alignItems="center" paddingX={2}>
+            <Box flexDirection="column" flexShrink={0} height={headerHeight} width="100%">
+                <Box flexDirection="row" justifyContent="space-between" alignItems="center" paddingX={1} width="100%">
                     <Box>
                         <Gradient name="passion">
                             <Text bold>CLANK</Text>
@@ -345,8 +346,8 @@ export function ChatHistory({
                         <Text dimColor>v{version}</Text>
                     </Box>
                 </Box>
-                <Box paddingX={2}>
-                    <Text dimColor>{'─'.repeat(80)}</Text>
+                <Box width="100%">
+                    <Text dimColor>{'─'.repeat(terminalWidth)}</Text>
                 </Box>
             </Box>
 
