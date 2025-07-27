@@ -157,6 +157,7 @@ const __dirname = dirname(__filename);
 
 const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, '../package.json'), 'utf8'));
 
+// Configure the main program
 program
     .version(packageJson.version)
     .description(packageJson.description)
@@ -460,6 +461,174 @@ program
             });
         } catch (error) {
             console.error("❌ Error initializing Grok CLI:", error instanceof Error ? error.message : String(error));
+            process.exit(1);
+        }
+    });
+
+// Add subcommands for better UX while keeping backward compatibility
+
+// Install command
+program
+    .command('install <tool>')
+    .description('Install a tool (format: org/name or org/name@version)')
+    .action(async (tool) => {
+        try {
+            const packageManager = new PackageManager();
+            await packageManager.autoUpdateCache();
+            await packageManager.install(tool);
+        } catch (error) {
+            console.error("❌ Error:", error instanceof Error ? error.message : String(error));
+            process.exit(1);
+        }
+    });
+
+// Uninstall command
+program
+    .command('uninstall <tool>')
+    .alias('remove')
+    .description('Uninstall a tool (format: org/name)')
+    .action(async (tool) => {
+        try {
+            const packageManager = new PackageManager();
+            await packageManager.uninstall(tool);
+        } catch (error) {
+            console.error("❌ Error:", error instanceof Error ? error.message : String(error));
+            process.exit(1);
+        }
+    });
+
+// Search command
+program
+    .command('search <query>')
+    .description('Search for tools in the registry')
+    .action(async (query) => {
+        try {
+            const packageManager = new PackageManager();
+            await packageManager.autoUpdateCache();
+            await packageManager.search(query);
+        } catch (error) {
+            console.error("❌ Error:", error instanceof Error ? error.message : String(error));
+            process.exit(1);
+        }
+    });
+
+// List command
+program
+    .command('list')
+    .alias('ls')
+    .description('List installed tools')
+    .action(async () => {
+        try {
+            const packageManager = new PackageManager();
+            await packageManager.listInstalled();
+        } catch (error) {
+            console.error("❌ Error:", error instanceof Error ? error.message : String(error));
+            process.exit(1);
+        }
+    });
+
+// List available command
+program
+    .command('list-available [page]')
+    .alias('la')
+    .description('List all available tools from registry')
+    .option('--page-size <size>', 'number of tools per page', '20')
+    .action(async (page, options) => {
+        try {
+            const packageManager = new PackageManager();
+            await packageManager.autoUpdateCache();
+            const pageNum = page ? parseInt(page, 10) : 1;
+            const pageSize = parseInt(options.pageSize, 10);
+            await packageManager.listAvailable({page: pageNum, limit: pageSize});
+        } catch (error) {
+            console.error("❌ Error:", error instanceof Error ? error.message : String(error));
+            process.exit(1);
+        }
+    });
+
+// Update command
+program
+    .command('update <tool>')
+    .alias('upgrade')
+    .description('Update a tool to the latest version')
+    .action(async (tool) => {
+        try {
+            const packageManager = new PackageManager();
+            await packageManager.autoUpdateCache();
+            await packageManager.update(tool);
+        } catch (error) {
+            console.error("❌ Error:", error instanceof Error ? error.message : String(error));
+            process.exit(1);
+        }
+    });
+
+// Clear cache command
+program
+    .command('clear-cache')
+    .description('Clear the package manager cache')
+    .action(async () => {
+        try {
+            const packageManager = new PackageManager();
+            await packageManager.clearCache();
+        } catch (error) {
+            console.error("❌ Error:", error instanceof Error ? error.message : String(error));
+            process.exit(1);
+        }
+    });
+
+// Publish command
+program
+    .command('publish')
+    .description('Publish your tool to the Clanker registry')
+    .action(async () => {
+        try {
+            const {publishTool} = await import('./package-manager/publisher');
+            await publishTool();
+        } catch (error) {
+            console.error("❌ Error:", error instanceof Error ? error.message : String(error));
+            process.exit(1);
+        }
+    });
+
+// Repository management commands
+program
+    .command('add-repo <url>')
+    .description('Add a tool repository')
+    .action(async (url) => {
+        try {
+            const {RepositoryManager} = await import('./package-manager/repository-manager');
+            const repoManager = new RepositoryManager();
+            await repoManager.addRepository(url);
+        } catch (error) {
+            console.error("❌ Error:", error instanceof Error ? error.message : String(error));
+            process.exit(1);
+        }
+    });
+
+program
+    .command('remove-repo <name>')
+    .description('Remove a tool repository')
+    .action(async (name) => {
+        try {
+            const {RepositoryManager} = await import('./package-manager/repository-manager');
+            const repoManager = new RepositoryManager();
+            await repoManager.removeRepository(name);
+        } catch (error) {
+            console.error("❌ Error:", error instanceof Error ? error.message : String(error));
+            process.exit(1);
+        }
+    });
+
+program
+    .command('list-repos')
+    .description('List configured repositories')
+    .action(async () => {
+        try {
+            const {RepositoryManager} = await import('./package-manager/repository-manager');
+            const repoManager = new RepositoryManager();
+            await repoManager.listRepositories();
+        } catch (error) {
+            console.error("❌ Error:", error instanceof Error ? error.message : String(error));
             process.exit(1);
         }
     });
