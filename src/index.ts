@@ -252,6 +252,15 @@ program
                 debug.log('Debug mode enabled');
             }
 
+            // Auto-update cache for any command (if settings allow)
+            try {
+                const packageManager = new PackageManager();
+                await packageManager.autoUpdateCache();
+            } catch (error) {
+                // Silently ignore cache update errors
+                debug.log('Cache auto-update failed:', error);
+            }
+
             // Handle package manager commands first (these don't need API key)
             const packageManagerCommands = [
                 'install', 'uninstall', 'search', 'list', 'listAvailable',

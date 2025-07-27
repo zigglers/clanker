@@ -19,6 +19,20 @@ export class ClankerPackageManager {
   }
 
   /**
+   * Auto-update cache if needed (called before any command)
+   */
+  async autoUpdateCache(): Promise<void> {
+    // The registry client will handle cache timeout internally
+    // This method ensures the cache is refreshed if needed
+    try {
+      await this.registry.fetchRegistry();
+    } catch (error) {
+      // Silently fail - we don't want to block commands if update fails
+      console.debug('Cache auto-update failed:', error);
+    }
+  }
+
+  /**
    * Install a tool
    */
   async install(toolSpec: string, options?: { force?: boolean }): Promise<void> {

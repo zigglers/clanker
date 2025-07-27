@@ -55,6 +55,8 @@ export const SettingsSchema = z.object({
         alwaysBash: z.boolean().default(false),
         alwaysSearch: z.boolean().default(false),
     }).default({}),
+    // Cache timeout in minutes (default 5 minutes)
+    cacheTimeoutMinutes: z.number().min(0).default(5),
     // Add version to track schema changes
     version: z.number().default(1)
 });

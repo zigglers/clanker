@@ -12,17 +12,24 @@ import {
   PackageManagerOptions 
 } from './types';
 import { RepositoryManager } from './repository-manager';
+import { SettingsManager } from '../utils/settings-manager';
 
 export class RegistryClient {
   private registryUrl: string;
   private cacheDir: string;
-  private cacheTimeout: number = 1000; // 1 second for testing
+  private cacheTimeout: number;
   private repoManager: RepositoryManager;
 
   constructor(options: PackageManagerOptions = {}) {
     this.registryUrl = options.registryUrl || 'https://raw.githubusercontent.com/ziggle-dev/clanker-tools/main';
     this.cacheDir = options.cacheDir || path.join(process.env.HOME || '', '.clanker', 'cache');
     this.repoManager = new RepositoryManager();
+    
+    // Get cache timeout from settings
+    const settingsManager = SettingsManager.getInstance();
+    const { settings } = settingsManager.loadSettings();
+    // Convert minutes to milliseconds
+    this.cacheTimeout = (settings.cacheTimeoutMinutes || 5) * 60 * 1000;
   }
 
   /**
@@ -52,26 +59,17 @@ export class RegistryClient {
           debug.log(`[Registry] Cache miss for ${repo.name}`);
         }
         
-        // Try to fetch from GitHub releases first
-        let registry: ToolRegistry | null = null;
+        // Always fetch from registry.json on main branch
+        const url = `${registryUrl}/registry.json`;
+        debug.log(`[Registry] Fetching registry from ${url}`);
+        const response = await fetch(url);
         
-        if (repo.url.includes('github.com')) {
-          registry = await this.fetchFromGitHubReleases(repo);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch from ${repo.name}: ${response.statusText}`);
         }
         
-        // Fallback to registry.json if no releases
-        if (!registry) {
-          const url = `${registryUrl}/registry.json`;
-          debug.log(`[Registry] Fetching registry from ${url}`);
-          const response = await fetch(url);
-          
-          if (!response.ok) {
-            throw new Error(`Failed to fetch from ${repo.name}: ${response.statusText}`);
-          }
-          
-          registry = await response.json() as ToolRegistry;
-          debug.log(`[Registry] Fetched ${registry.tools?.length || 0} tools from registry.json`);
-        }
+        const registry = await response.json() as ToolRegistry;
+        debug.log(`[Registry] Fetched ${registry.tools?.length || 0} tools from registry.json`);
         
         // Cache the result
         await this.writeCache(cacheFile, registry);
