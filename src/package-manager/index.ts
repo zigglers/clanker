@@ -116,6 +116,56 @@ export class ClankerPackageManager {
   }
 
   /**
+   * List all available tools from the registry
+   */
+  async listAvailable(options: { page?: number; limit?: number } = {}): Promise<void> {
+    try {
+      const page = options.page || 1;
+      const limit = options.limit || 20;
+      const offset = (page - 1) * limit;
+      
+      // Fetch registry
+      const registry = await this.registry.fetchRegistry();
+      const allTools = registry.tools;
+      
+      if (allTools.length === 0) {
+        console.log('No tools available in the registry.');
+        return;
+      }
+      
+      // Sort tools by org/name
+      const sortedTools = [...allTools].sort((a, b) => 
+        `${a.org}/${a.name}`.localeCompare(`${b.org}/${b.name}`)
+      );
+      
+      // Paginate
+      const totalPages = Math.ceil(sortedTools.length / limit);
+      const pagedTools = sortedTools.slice(offset, offset + limit);
+      
+      console.log(`\n📦 Available tools (page ${page}/${totalPages}, ${allTools.length} total):\n`);
+      
+      for (const tool of pagedTools) {
+        console.log(`${tool.org}/${tool.name} (v${tool.latest})`);
+        console.log(`  ${tool.description}`);
+        if (tool.downloads || tool.stars) {
+          const stats = [];
+          if (tool.downloads) stats.push(`${tool.downloads} downloads`);
+          if (tool.stars) stats.push(`⭐ ${tool.stars}`);
+          console.log(`  ${stats.join(' · ')}`);
+        }
+        console.log();
+      }
+      
+      if (totalPages > 1) {
+        console.log(`Page ${page} of ${totalPages}. Use --page <n> to see other pages.`);
+      }
+    } catch (error) {
+      console.error(`❌ Failed to list available tools: ${error instanceof Error ? error.message : String(error)}`);
+      throw error;
+    }
+  }
+
+  /**
    * Update a tool to latest version
    */
   async update(toolSpec: string): Promise<void> {

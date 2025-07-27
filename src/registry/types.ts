@@ -194,7 +194,7 @@ export interface ToolRegistry {
     unregister(toolId: string): void;
 
     // Discovery
-    get(toolId: string): RegisteredTool | undefined;
+    get(toolId: string | ToolDefinition): RegisteredTool | undefined;
 
     list(filter?: ToolFilter): ToolDefinition[];
 

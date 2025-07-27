@@ -31,7 +31,6 @@ export default [
         },
         rules: {
             ...typescriptEslint.configs.recommended.rules,
-            "@typescript-eslint/no-unused-vars": "error",
             "@typescript-eslint/no-explicit-any": "error",
             "@typescript-eslint/explicit-function-return-type": ["warn", {
                 allowExpressions: true,

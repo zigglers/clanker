@@ -160,4 +160,12 @@ export class GrokClient {
 
         return this.chat([searchMessage], [], undefined, searchOptions);
     }
+
+    setApiKey(apiKey: string) {
+        this.client = new OpenAI({
+            apiKey,
+            baseURL: this.client.baseURL,
+            timeout: this.client.timeout,
+        });
+    }
 }

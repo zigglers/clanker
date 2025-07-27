@@ -15,7 +15,6 @@ export interface ConfirmationResult {
 
 export class ConfirmationService extends EventEmitter {
     private static instance: ConfirmationService;
-    private skipConfirmationThisSession = false;
     private pendingConfirmation: Promise<ConfirmationResult> | null = null;
     private resolveConfirmation: ((result: ConfirmationResult) => void) | null =
         null;
@@ -126,6 +125,7 @@ export class ConfirmationService extends EventEmitter {
         };
     }
 
+    // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
     getSessionFlags() {
         return {...this.sessionFlags};
     }
@@ -133,7 +133,28 @@ export class ConfirmationService extends EventEmitter {
     setSessionFlag(
         flagType: "fileOperations" | "bashCommands" | "allOperations",
         value: boolean
-    ) {
+    ): void {
         this.sessionFlags[flagType] = value;
     }
+
+    setAlwaysYes(b: boolean) {
+        this.sessionFlags.allOperations = b;
+        this.sessionFlags.fileOperations = b;
+        this.sessionFlags.bashCommands = b;
+        this.sessionFlags.createFiles = b;
+        this.sessionFlags.editFiles = b;
+    }
+}
+
+export const useConfirmationService = () => {
+    const server = ConfirmationService.getInstance();
+    return {
+        requestConfirmation: server.requestConfirmation.bind(server),
+        confirmOperation: server.confirmOperation.bind(server),
+        rejectOperation: server.rejectOperation.bind(server),
+        isPending: server.isPending.bind(server),
+        resetSession: server.resetSession.bind(server),
+        sessionFlags: server.getSessionFlags.bind(server),
+        setSessionFlag: server.setSessionFlag.bind(server)
+    };
 }

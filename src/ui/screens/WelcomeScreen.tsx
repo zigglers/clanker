@@ -23,12 +23,13 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ agent, onComplete 
     // Color cycle for the border
     const colors = ['red', 'yellow', 'green', 'cyan', 'blue', 'magenta'];
     
-    // Handle escape key only when component is visible
+    // Handle escape key only when component is visible and TTY is available
+    const isTTY = process.stdin.isTTY;
     useInput((input, key) => {
         if (key.escape) {
             setShouldSkip(true);
         }
-    }, { isActive: true });
+    }, { isActive: isTTY });
     
     // Color cycling effect
     useEffect(() => {

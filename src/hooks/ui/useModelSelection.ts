@@ -9,7 +9,7 @@ interface UseModelSelectionProps {
     messageRegistry: typeof MessageRegistryType;
 }
 
-export function useModelSelection({agent, messageRegistry}: UseModelSelectionProps) {
+export const useModelSelection = ({agent, messageRegistry}: UseModelSelectionProps) => {
     const snap = useSnapshot(store);
     const showModelSelection = snap.showModelSelection;
     const selectedModelIndex = snap.selectedModelIndex;
@@ -71,4 +71,4 @@ export function useModelSelection({agent, messageRegistry}: UseModelSelectionPro
         navigateModelSelection,
         cancelModelSelection,
     };
-}
+};

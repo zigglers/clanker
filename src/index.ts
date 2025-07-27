@@ -10,6 +10,7 @@ import * as os from "os";
 import {ConfirmationService} from "./utils/confirmation-service";
 import {setDebugMode, debug} from "./utils/debug-logger";
 import {PackageManager} from "./package-manager";
+import {store} from "./store";
 // Display functions no longer needed - using React components instead
 
 // Load environment variables
@@ -100,75 +101,82 @@ async function processPromptHeadless(
             watchTools
         });
 
-        // Wait for tools to load
+        // Wait for tools to load before processing
         await agent.waitForToolsToLoad();
 
-        // Configure confirmation service for headless mode (auto-approve all operations)
-        const confirmationService = ConfirmationService.getInstance();
-        confirmationService.setSessionFlag("allOperations", true);
+        // Process the prompt
+        const confirmationService = new ConfirmationService();
+        const chunks: string[] = [];
+        
+        // Process response with streaming
+        const stream = await agent.chat(
+            [{role: "user", content: prompt}],
+            "",
+            true
+        ) as AsyncGenerator<any, void, unknown>;
 
-        debug.log("Processing prompt with new registry system...\n");
-
-        // Show loaded tools
-        const registry = agent.getRegistry();
-        const tools = registry.list();
-        debug.log(`Loaded ${tools.length} tools: ${tools.map(t => t.id).join(', ')}\n`);
-
-        // Process the message
-        const response = await agent.chat([
-            {role: "user", content: prompt}
-        ], undefined, false) as string;
-
-        console.log(response);
-
-        // Show tool statistics if any tools were used
-        const stats = agent.getToolStats();
-        if (stats && Object.keys(stats).length > 0) {
-            debug.log("\nTool Usage Statistics:");
-            Object.entries(stats).forEach(([toolId, toolStats]) => {
-                if ((toolStats as { executionCount: number }).executionCount > 0) {
-                    const typedStats = toolStats as { executionCount: number; totalDuration: number };
-                    const durationInSeconds = (typedStats.totalDuration / 1000).toFixed(2);
-                    debug.log(`  - ${toolId}: ${typedStats.executionCount} calls, ${durationInSeconds}s total`);
-                }
-            });
+        for await (const chunk of stream) {
+            switch (chunk.type) {
+                case 'content':
+                    if (chunk.content) {
+                        process.stdout.write(chunk.content);
+                        chunks.push(chunk.content);
+                    }
+                    break;
+                case 'tool_execution_start':
+                    console.log(`\n\nExecuting tool: ${chunk.toolName}`);
+                    console.log("Arguments:", JSON.stringify(chunk.args, null, 2));
+                    // TODO: Handle confirmation if needed
+                    break;
+                case 'tool_execution_result':
+                    console.log(`\nTool result: ${chunk.result.success ? 'Success' : 'Failed'}`);
+                    if (chunk.result.output) {
+                        console.log(chunk.result.output);
+                    }
+                    break;
+            }
         }
+
+        console.log("\n");
     } catch (error) {
-        console.error("❌ Error processing prompt:", error instanceof Error ? error.message : String(error));
+        console.error("❌ Error:", error instanceof Error ? error.message : String(error));
         process.exit(1);
     }
 }
 
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, '../package.json'), 'utf8'));
+
 program
-    .name("grok-registry")
-    .description(
-        "Test the new dynamic tool registry system for Grok CLI"
-    )
-    .version((() => {
-        try {
-            const packagePath = path.join(__dirname, '..', 'package.json');
-            const packageData = fs.readFileSync(packagePath, 'utf8');
-            return JSON.parse(packageData).version;
-        } catch {
-            return "0.1.32";
-        }
-    })())
-    .option("-d, --directory <dir>", "set working directory", process.cwd())
-    .option("-k, --api-key <key>", "API key (or set CLANKER_API_KEY env var)")
+    .version(packageJson.version)
+    .description(packageJson.description)
     .option(
-        "-u, --base-url <url>",
-        "API base URL (or set CLANKER_BASE_URL env var)"
+        "-k, --api-key <key>",
+        "API key for Grok/LLM provider"
+    )
+    .option(
+        "-b, --base-url <url>",
+        "Base URL for API (default: https://api.x.ai/v1)"
     )
     .option(
         "-m, --model <model>",
-        "AI model to use (e.g., grok-beta)"
+        "Model to use (default: grok-3-latest)"
     )
     .option(
         "-p, --prompt <prompt>",
-        "process a single prompt and exit (headless mode)"
+        "prompt to execute (headless mode)"
     )
     .option(
-        "--debug",
+        "-y, --yes",
+        "auto-confirm all operations (dangerous)"
+    )
+    .option(
+        "-d, --debug",
         "enable debug logging"
     )
     .option(
@@ -196,8 +204,17 @@ program
         "search for tools in the registry"
     )
     .option(
-        "-L, --list-installed",
-        "list all installed tools"
+        "-L, --list",
+        "list installed tools"
+    )
+    .option(
+        "-A, --list-available [page]",
+        "list all available tools from registry (optional page number)"
+    )
+    .option(
+        "--page-size <size>",
+        "number of tools per page (default: 20)",
+        "20"
     )
     .option(
         "--update <tool>",
@@ -217,96 +234,103 @@ program
     )
     .option(
         "--add-repo <url>",
-        "add a repository to search for tools"
+        "add a tool repository"
     )
     .option(
-        "--remove-repo <url>",
-        "remove a repository from the search list"
+        "--remove-repo <name>",
+        "remove a tool repository"
     )
     .option(
         "--list-repos",
-        "list all configured repositories"
+        "list configured repositories"
     )
     .action(async (options) => {
-        // Set debug mode if flag is present
-        if (options.debug) {
-            setDebugMode(true, true); // Enable file logging when debug is on
-            debug.log('Debug mode enabled');
-        }
-
-        if (options.directory) {
-            try {
-                process.chdir(options.directory);
-            } catch (error) {
-                console.error(
-                    `Error changing directory to ${options.directory}:`,
-                    error instanceof Error ? error.message : String(error)
-                );
-                process.exit(1);
-            }
-        }
-
         try {
-            // Handle package manager commands first (they don't need API key)
-            const packageManager = new PackageManager();
-
-            if (options.install) {
-                await packageManager.install(options.install, {force: false});
-                return;
+            // Set debug mode if requested
+            if (options.debug) {
+                setDebugMode(true);
+                debug.log('Debug mode enabled');
             }
 
-            if (options.uninstall) {
-                await packageManager.uninstall(options.uninstall);
-                return;
-            }
+            // Handle package manager commands first (these don't need API key)
+            const packageManagerCommands = [
+                'install', 'uninstall', 'search', 'list', 'listAvailable',
+                'update', 'clearCache', 'addRepo', 'removeRepo', 'listRepos'
+            ];
 
-            if (options.search) {
-                await packageManager.search(options.search, {limit: 20});
-                return;
-            }
+            const hasPackageManagerCommand = packageManagerCommands.some(cmd => options[cmd]);
 
-            if (options.listInstalled) {
-                await packageManager.listInstalled();
-                return;
-            }
+            if (hasPackageManagerCommand) {
+                const packageManager = new PackageManager();
 
-            if (options.update) {
-                await packageManager.update(options.update);
-                return;
-            }
+                if (options.install) {
+                    await packageManager.install(options.install);
+                    return;
+                }
 
-            if (options.clearCache) {
-                await packageManager.clearCache();
-                return;
-            }
-            
-            // Handle publish command
-            if (options.publish) {
-                const {publishTool} = await import('./package-manager/publisher');
-                await publishTool();
-                return;
-            }
-            
-            // Handle repository management commands
-            if (options.addRepo) {
-                const {RepositoryManager} = await import('./package-manager/repository-manager');
-                const repoManager = new RepositoryManager();
-                await repoManager.addRepository(options.addRepo);
-                return;
-            }
-            
-            if (options.removeRepo) {
-                const {RepositoryManager} = await import('./package-manager/repository-manager');
-                const repoManager = new RepositoryManager();
-                await repoManager.removeRepository(options.removeRepo);
-                return;
-            }
-            
-            if (options.listRepos) {
-                const {RepositoryManager} = await import('./package-manager/repository-manager');
-                const repoManager = new RepositoryManager();
-                await repoManager.listRepositories();
-                return;
+                if (options.uninstall) {
+                    await packageManager.uninstall(options.uninstall);
+                    return;
+                }
+
+                if (options.search) {
+                    await packageManager.search(options.search);
+                    return;
+                }
+
+                if (options.list) {
+                    await packageManager.listInstalled();
+                    return;
+                }
+
+                if (options.listAvailable !== undefined) {
+                    const page = typeof options.listAvailable === 'string' 
+                        ? parseInt(options.listAvailable, 10) 
+                        : 1;
+                    const pageSize = parseInt(options.pageSize, 10);
+                    await packageManager.listAvailable({ page, limit: pageSize });
+                    return;
+                }
+
+
+                if (options.update) {
+                    await packageManager.update(options.update);
+                    return;
+                }
+
+                if (options.clearCache) {
+                    await packageManager.clearCache();
+                    return;
+                }
+
+                // Handle publish command
+                if (options.publish) {
+                    const {publishTool} = await import('./package-manager/publisher');
+                    await publishTool();
+                    return;
+                }
+
+                // Handle repository management commands
+                if (options.addRepo) {
+                    const {RepositoryManager} = await import('./package-manager/repository-manager');
+                    const repoManager = new RepositoryManager();
+                    await repoManager.addRepository(options.addRepo);
+                    return;
+                }
+
+                if (options.removeRepo) {
+                    const {RepositoryManager} = await import('./package-manager/repository-manager');
+                    const repoManager = new RepositoryManager();
+                    await repoManager.removeRepository(options.removeRepo);
+                    return;
+                }
+
+                if (options.listRepos) {
+                    const {RepositoryManager} = await import('./package-manager/repository-manager');
+                    const repoManager = new RepositoryManager();
+                    await repoManager.listRepositories();
+                    return;
+                }
             }
 
             // Get API key from options, environment, or user settings
@@ -314,11 +338,14 @@ program
             const baseURL = options.baseUrl || loadBaseURL();
             const model = options.model;
 
-            if (!apiKey) {
-                console.error(
-                    "❌ Error: API key required. Set CLANKER_API_KEY environment variable, use --api-key flag, or save to ~/.clanker/user-settings.json"
-                );
-                process.exit(1);
+            // Commands that require API key
+            if (options.listTools || options.prompt || !options.publish) {
+                if (!apiKey) {
+                    console.error(
+                        "❌ Error: API key required. Set CLANKER_API_KEY environment variable, use --api-key flag, or save to ~/.clanker/user-settings.json"
+                    );
+                    process.exit(1);
+                }
             }
 
             // No core tools - all tools come from registry
@@ -355,8 +382,14 @@ program
                 return;
             }
 
-            // Headless mode: process prompt and exit
+            // Handle prompt mode (headless)
             if (options.prompt) {
+                // Set confirmation service to auto-confirm if --yes flag is provided
+                if (options.yes) {
+                    const confirmationService = new ConfirmationService();
+                    confirmationService.setAlwaysYes(true);
+                }
+
                 await processPromptHeadless(
                     options.prompt,
                     apiKey,
@@ -369,34 +402,29 @@ program
                 return;
             }
 
-            // Interactive mode: launch UI
-            const {render} = await import("ink");
+            // Interactive mode - now handled through React UI
+            // Import dynamically to avoid loading React in headless mode
             const React = await import("react");
+            const {render} = await import("ink");
+            const {actions} = await import("./store");
 
-            // Check if we can use raw mode
-            const isRawModeSupported = process.stdin.isTTY;
-
-            if (!isRawModeSupported) {
-                console.error("❌ Error: Interactive mode requires a TTY. Use --prompt flag for non-interactive usage.");
+            // Set up global error handler for uncaught errors
+            process.on('uncaughtException', (error) => {
+                console.error('Uncaught exception:', error);
                 process.exit(1);
-            }
+            });
 
-            // Handle SIGINT (Ctrl+C) to prevent default termination
-            // Import store actions for proper integration
-            const {actions, store} = await import("./store");
-
+            // Handle Ctrl+C gracefully
+            let exitCount = 0;
+            let exitTimer: NodeJS.Timeout | null = null;
             process.on('SIGINT', () => {
-                // Use the store to manage exit confirmation state
-                const state = store;
-                const now = Date.now();
-
-                if (state.exitConfirmation && state.exitConfirmationTime && (now - state.exitConfirmationTime) < 3000) {
-                    // Second Ctrl+C within 3 seconds - exit
+                if (exitCount > 0) {
+                    // Second Ctrl+C, exit immediately
                     process.exit(0);
                 } else {
                     // First Ctrl+C or after timeout
                     // Clear input when Ctrl+C is pressed
-                    if (state.inputValue.trim()) {
+                    if (store.inputValue.trim()) {
                         actions.setInputValue("");
                     }
                     actions.setExitConfirmation(true);
@@ -406,44 +434,9 @@ program
 
             // No core tools - all tools come from registry
 
-            // Check if we have settings or need to show settings screen
-            const {SettingsManager, ProviderModels} = await import("./utils/settings-manager");
-            const settingsManager = SettingsManager.getInstance();
-            const {settings, isValid} = settingsManager.loadSettings();
-
-            let agent: GrokAgent | undefined;
-
-            // Try to create agent if we have valid settings
-            if (isValid && settings.apiKey) {
-                try {
-                    // Get the base URL from provider configuration
-                    let configuredBaseURL: string | undefined;
-                    if (settings.provider === 'custom') {
-                        configuredBaseURL = settings.customBaseURL;
-                    } else {
-                        const providerConfig = ProviderModels[settings.provider || 'grok'];
-                        configuredBaseURL = providerConfig.baseURL;
-                    }
-
-                    agent = new GrokAgent({
-                        apiKey: settings.apiKey,
-                        baseURL: configuredBaseURL || baseURL,
-                        model: model || settings.model || ProviderModels.grok.defaultModel,
-                        loadDynamicTools: options.loadDynamicTools,
-                        dynamicToolsPath: options.toolsPath,
-                        watchTools: options.watchTools
-                    });
-                    
-                    // Wait for tools to load
-                    await agent.waitForToolsToLoad();
-                } catch (error) {
-                    console.error('Failed to create agent with saved settings:', error);
-                }
-            }
-
             // Always render AppContainer - it will handle showing settings if needed
             const {AppContainer} = await import("./ui/containers/AppContainer");
-            const app = render(React.createElement(AppContainer, {agent}));
+            const app = render(React.createElement(AppContainer, {}));
 
             // Ensure we exit cleanly on unmount
             app.waitUntilExit().then(() => {
@@ -455,4 +448,10 @@ program
         }
     });
 
-program.parse();
+// Parse arguments
+program.parse(process.argv);
+
+// If no command is provided, show help
+if (process.argv.length <= 2) {
+    program.help();
+}

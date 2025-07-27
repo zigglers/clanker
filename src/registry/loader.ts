@@ -105,9 +105,9 @@ export class ToolLoader {
      */
     async loadTools(): Promise<void> {
         // Load built-in tools first if enabled
-        if (this.options.loadBuiltins) {
-            await this.loadBuiltinTools();
-        }
+        // if (this.options.loadBuiltins) {
+        //     await this.loadBuiltinTools();
+        // }
 
         // Load from each configured directory
         for (const dir of this.options.directories) {
@@ -125,34 +125,34 @@ export class ToolLoader {
     /**
      * Load built-in tools from the package
      */
-    private async loadBuiltinTools(): Promise<void> {
-        try {
-            // Try to load from manifest first, fall back to static imports
-            const tools = await loadBuiltInToolsFromManifest();
-
-            debug.log(`[ToolLoader] Loading ${tools.length} built-in tools`);
-
-            // Register all built-in tools directly
-            for (const tool of tools) {
-                if (this.isValidTool(tool)) {
-                    this.registry.register(tool);
-                    const registeredTool = this.registry.get(tool.id);
-                    if (registeredTool) {
-                        registeredTool.hash = 'builtin';
-                        registeredTool.filePath = `builtin:${tool.id}`;
-                    }
-                    this.loadedTools.set(tool.id, {path: `builtin:${tool.id}`, hash: 'builtin'});
-                    debug.log(`[ToolLoader] Loaded built-in tool: ${tool.id}`);
-                } else {
-                    debug.warn(`[ToolLoader] Invalid built-in tool`);
-                }
-            }
-
-            debug.log(`[ToolLoader] Successfully loaded ${tools.length} built-in tools`);
-        } catch (error) {
-            debug.warn('[ToolLoader] Failed to load built-in tools:', error);
-        }
-    }
+    // private async loadBuiltinTools(): Promise<void> {
+    //     try {
+    //         // Try to load from manifest first, fall back to static imports
+    //         const tools = await loadBuiltInToolsFromManifest();
+    //
+    //         debug.log(`[ToolLoader] Loading ${tools.length} built-in tools`);
+    //
+    //         // Register all built-in tools directly
+    //         for (const tool of tools) {
+    //             if (this.isValidTool(tool)) {
+    //                 this.registry.register(tool);
+    //                 const registeredTool = this.registry.get(tool.id);
+    //                 if (registeredTool) {
+    //                     registeredTool.hash = 'builtin';
+    //                     registeredTool.filePath = `builtin:${tool.id}`;
+    //                 }
+    //                 this.loadedTools.set(tool.id, {path: `builtin:${tool.id}`, hash: 'builtin'});
+    //                 debug.log(`[ToolLoader] Loaded built-in tool: ${tool.id}`);
+    //             } else {
+    //                 debug.warn(`[ToolLoader] Invalid built-in tool`);
+    //             }
+    //         }
+    //
+    //         debug.log(`[ToolLoader] Successfully loaded ${tools.length} built-in tools`);
+    //     } catch (error) {
+    //         debug.warn('[ToolLoader] Failed to load built-in tools:', error);
+    //     }
+    // }
 
     /**
      * Load tools from a directory
@@ -182,6 +182,7 @@ export class ToolLoader {
             entries = await fs.readdir(directory, {withFileTypes: true});
         } catch (error) {
             // Directory not accessible, skip silently
+            let _er: unknown = error;
             return;
         }
 

@@ -1,64 +1,85 @@
 import React, { useState, useEffect } from 'react';
+import { useSnapshot } from 'valtio';
 import { GrokAgent } from '../../clanker/agent';
 import { WelcomeScreen } from '../screens/WelcomeScreen';
 import { StageRouter } from '../stage/StageRouter';
-import { StageType } from '../stage/types';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { SettingsManager, Settings, ProviderModels } from '../../utils/settings-manager';
-import { actions } from '../../store';
+import { actions, store } from '../../store';
 import { registerBuiltinCommands } from '../../commands/builtin';
 
 interface AppContainerProps {
-    agent?: GrokAgent;
     onRequestReload?: () => void;
 }
 
-export const AppContainer: React.FC<AppContainerProps> = ({ agent: initialAgent, onRequestReload }) => {
-    const [showWelcome, setShowWelcome] = useState(true);
+export const AppContainer: React.FC<AppContainerProps> = ({ onRequestReload }) => {
+    const snap = useSnapshot(store);
+    const [showWelcome, setShowWelcome] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
-    const [agent, setAgent] = useState<GrokAgent | null>(initialAgent || null);
+    const [isInitialized, setIsInitialized] = useState(false);
     const settingsManager = SettingsManager.getInstance();
-    
+
     useEffect(() => {
-        // Clear the screen before showing anything
-        console.clear();
-        
-        // Register built-in commands once on app startup
-        registerBuiltinCommands();
-        
-        // Load settings
-        actions.loadSettings();
-        
-        // Load tools if agent is provided
-        if (agent) {
-            agent.waitForToolsToLoad().then(() => {
-                console.log('Tools loaded successfully');
-            }).catch(error => {
-                console.error('Failed to load tools:', error);
-            });
-        }
-        
-        // Check if settings need configuration
-        if (!agent && settingsManager.needsConfiguration()) {
-            setShowSettings(true);
-            setShowWelcome(false);
-        }
-    }, [agent]);
-    
+        const initialize = async () => {
+            // Clear the screen before showing anything
+            console.clear();
+
+            // Register built-in commands once on app startup
+            registerBuiltinCommands();
+
+            // Load settings from disk
+            actions.loadSettings();
+            
+            // Check if we have settings
+            const { settings, isValid } = settingsManager.loadSettings();
+            
+            if (isValid && settings.apiKey) {
+                // We have valid settings, create agent
+                try {
+                    let baseURL: string | undefined;
+                    if (settings.provider === 'custom') {
+                        baseURL = settings.customBaseURL;
+                    } else {
+                        const providerConfig = ProviderModels[settings.provider || 'grok'];
+                        baseURL = providerConfig.baseURL;
+                    }
+
+                    const agent = new GrokAgent({
+                        apiKey: settings.apiKey,
+                        baseURL,
+                        model: settings.model || ProviderModels.grok.defaultModel,
+                        loadDynamicTools: true
+                    });
+
+                    // Wait for tools to load
+                    await agent.waitForToolsToLoad();
+                    
+                    // Set agent in global store
+                    actions.setAgent(agent);
+                    
+                    // Show welcome screen
+                    setShowWelcome(true);
+                } catch (error) {
+                    console.error('Failed to initialize agent:', error);
+                    // Show settings if agent creation failed
+                    setShowSettings(true);
+                }
+            } else {
+                // No valid settings, show settings screen
+                setShowSettings(true);
+            }
+            
+            setIsInitialized(true);
+        };
+
+        initialize();
+    }, []);
+
     const handleWelcomeComplete = () => {
         setShowWelcome(false);
-        
-        // After welcome, check if we need settings
-        if (!agent) {
-            setShowSettings(true);
-        }
     };
-    
+
     const handleSettingsComplete = async (settings: Settings) => {
-        // Settings have been saved to disk by SettingsScreen
-        console.log('\n✅ Settings saved successfully!');
-        
-        // Create the agent with proper initialization
         try {
             // Get the base URL from provider configuration
             let baseURL: string | undefined;
@@ -68,9 +89,12 @@ export const AppContainer: React.FC<AppContainerProps> = ({ agent: initialAgent,
                 const providerConfig = ProviderModels[settings.provider || 'grok'];
                 baseURL = providerConfig.baseURL;
             }
-            
-            // No core tools - all tools come from registry
-            
+
+            // Dispose of existing agent if any
+            if (store.agent) {
+                store.agent.dispose();
+            }
+
             // Create new agent with all the proper settings
             const newAgent = new GrokAgent({
                 apiKey: settings.apiKey,
@@ -78,15 +102,14 @@ export const AppContainer: React.FC<AppContainerProps> = ({ agent: initialAgent,
                 model: settings.model || ProviderModels.grok.defaultModel,
                 loadDynamicTools: true
             });
-            
+
             // Wait for tools to load
             await newAgent.waitForToolsToLoad();
-            
-            // Update the app state
-            setAgent(newAgent);
+
+            // Update the global store
             actions.setAgent(newAgent);
             actions.clearMessages();
-            
+
             // Update store settings
             actions.setModel(settings.model);
             actions.setTheme(settings.theme);
@@ -94,44 +117,52 @@ export const AppContainer: React.FC<AppContainerProps> = ({ agent: initialAgent,
             actions.setVSCodeOpen(settings.vsCodeOpenEnabled);
             actions.setDangerousBypassPermission(settings.dangerousBypassPermission);
             actions.updateConfirmationSettings(settings.confirmationSettings);
-            
+
             // Hide settings and show welcome for normal flow
             setShowSettings(false);
             console.clear();  // Clear screen before showing welcome
             setShowWelcome(true);
-            
+
             console.log('Agent initialized successfully');
         } catch (error) {
             console.error('Failed to initialize agent:', error);
             // Keep showing settings on error
         }
     };
-    
+
     const handleSettingsCancel = () => {
         // If we have an agent, just close settings
-        if (agent) {
+        if (snap.agent) {
             setShowSettings(false);
         }
         // Otherwise, we can't proceed without settings
     };
-    
+
+    // Wait for initialization
+    if (!isInitialized) {
+        return null;
+    }
+
+    // Show settings if needed
     if (showSettings) {
         return (
             <SettingsScreen 
                 onComplete={handleSettingsComplete}
-                onCancel={agent ? handleSettingsCancel : undefined}
+                onCancel={snap.agent ? handleSettingsCancel : undefined}
             />
         );
     }
-    
-    if (showWelcome && agent) {
-        return <WelcomeScreen agent={agent} onComplete={handleWelcomeComplete} />;
+
+    // Show welcome screen
+    if (showWelcome && snap.agent) {
+        return <WelcomeScreen agent={snap.agent} onComplete={handleWelcomeComplete} />;
     }
-    
-    if (agent) {
-        return <StageRouter agent={agent} />;
+
+    // Show main app with agent from store
+    if (snap.agent) {
+        return <StageRouter agent={snap.agent} />;
     }
-    
-    // This shouldn't happen, but just in case
+
+    // This shouldn't happen, but show settings as fallback
     return <SettingsScreen onComplete={handleSettingsComplete} />;
 };

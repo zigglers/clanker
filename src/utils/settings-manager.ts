@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { z } from 'zod';
+import {z} from 'zod';
 
 // Provider configuration
 export const ProviderModels = {
@@ -9,13 +9,13 @@ export const ProviderModels = {
         name: 'Grok',
         baseURL: 'https://api.x.ai/v1',
         models: [
-            { value: 'grok-4-0709', label: 'Grok 4' },
-            { value: 'grok-3', label: 'Grok 3' },
-            { value: 'grok-3-mini', label: 'Grok 3 Mini' },
-            { value: 'grok-3-fast', label: 'Grok 3 Fast' },
-            { value: 'grok-3-mini-fast', label: 'Grok 3 Mini Fast' },
-            { value: 'grok-2-vision-1212', label: 'Grok 2 Vision' },
-            { value: 'grok-2-image-1212', label: 'Grok 2 Image' }
+            {value: 'grok-4-0709', label: 'Grok 4'},
+            {value: 'grok-3', label: 'Grok 3'},
+            {value: 'grok-3-mini', label: 'Grok 3 Mini'},
+            {value: 'grok-3-fast', label: 'Grok 3 Fast'},
+            {value: 'grok-3-mini-fast', label: 'Grok 3 Mini Fast'},
+            {value: 'grok-2-vision-1212', label: 'Grok 2 Vision'},
+            {value: 'grok-2-image-1212', label: 'Grok 2 Image'}
         ],
         defaultModel: 'grok-3'
     },
@@ -23,9 +23,9 @@ export const ProviderModels = {
         name: 'OpenAI',
         baseURL: 'https://api.openai.com/v1',
         models: [
-            { value: 'gpt-4', label: 'GPT-4' },
-            { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
-            { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' }
+            {value: 'gpt-4', label: 'GPT-4'},
+            {value: 'gpt-4-turbo', label: 'GPT-4 Turbo'},
+            {value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo'}
         ],
         defaultModel: 'gpt-4-turbo'
     },
@@ -84,7 +84,7 @@ export class SettingsManager {
      */
     private ensureSettingsDir(): void {
         if (!fs.existsSync(this.settingsDir)) {
-            fs.mkdirSync(this.settingsDir, { recursive: true });
+            fs.mkdirSync(this.settingsDir, {recursive: true});
         }
     }
 
@@ -94,26 +94,26 @@ export class SettingsManager {
     loadSettings(): { settings: Partial<Settings>, isValid: boolean, errors: z.ZodError | null } {
         try {
             this.ensureSettingsDir();
-            
+
             if (!fs.existsSync(this.settingsPath)) {
-                return { settings: {}, isValid: false, errors: null };
+                return {settings: {}, isValid: false, errors: null};
             }
 
             const fileContent = fs.readFileSync(this.settingsPath, 'utf-8');
             const rawSettings = JSON.parse(fileContent);
-            
+
             // Try to parse with schema
             const result = SettingsSchema.safeParse(rawSettings);
-            
+
             if (result.success) {
-                return { settings: result.data, isValid: true, errors: null };
+                return {settings: result.data, isValid: true, errors: null};
             } else {
                 // Return partial settings and validation errors
-                return { settings: rawSettings, isValid: false, errors: result.error };
+                return {settings: rawSettings, isValid: false, errors: result.error};
             }
         } catch (error) {
             console.error('Failed to load settings:', error);
-            return { settings: {}, isValid: false, errors: null };
+            return {settings: {}, isValid: false, errors: null};
         }
     }
 
@@ -123,10 +123,10 @@ export class SettingsManager {
     saveSettings(settings: Settings): void {
         try {
             this.ensureSettingsDir();
-            
+
             // Add version
-            const settingsWithVersion = { ...settings, version: this.currentVersion };
-            
+            const settingsWithVersion = {...settings, version: this.currentVersion};
+
             fs.writeFileSync(
                 this.settingsPath,
                 JSON.stringify(settingsWithVersion, null, 2),
@@ -143,10 +143,10 @@ export class SettingsManager {
      * Returns true if settings are missing, invalid, or have new fields
      */
     needsConfiguration(): boolean {
-        const { isValid, settings } = this.loadSettings();
-        
+        const {isValid, settings} = this.loadSettings();
+
         if (!isValid) return true;
-        
+
         // Check if we have all required fields
         const requiredFields = ['apiKey'];
         for (const field of requiredFields) {
@@ -154,12 +154,12 @@ export class SettingsManager {
                 return true;
             }
         }
-        
+
         // Check version for schema changes
         if (!settings.version || settings.version < this.currentVersion) {
             return true;
         }
-        
+
         return false;
     }
 
@@ -167,20 +167,20 @@ export class SettingsManager {
      * Get fields that need configuration
      */
     getMissingFields(): string[] {
-        const { settings } = this.loadSettings();
+        const {settings} = this.loadSettings();
         const schema = SettingsSchema.shape;
         const missingFields: string[] = [];
-        
+
         // Check each field in the schema
         for (const [key, value] of Object.entries(schema)) {
             if (key === 'version') continue;
-            
+
             // Check if field is required and missing
             if (!value.isOptional() && !settings[key as keyof Settings]) {
                 missingFields.push(key);
             }
         }
-        
+
         return missingFields;
     }
 
@@ -197,6 +197,16 @@ export class SettingsManager {
                 return error.errors[0]?.message || 'Invalid value';
             }
             return 'Invalid value';
+        }
+    }
+
+    hasSettings() {
+        try {
+            this.ensureSettingsDir();
+            return fs.existsSync(this.settingsPath);
+        } catch (error) {
+            console.error('Failed to check settings:', error);
+            return false;
         }
     }
 }

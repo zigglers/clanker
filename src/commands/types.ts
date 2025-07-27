@@ -7,12 +7,12 @@ export interface ArgumentDefinition {
     type: ArgumentType;
     description?: string;
     required?: boolean;
-    default?: any;
+    default?: unknown;
     // For enum types
     options?: Array<{ value: string; label: string }>;
     // For string types
     placeholder?: string;
-    validation?: (value: any) => string | undefined;
+    validation?: (value: unknown) => string | undefined;
 }
 
 // Command definition
@@ -21,14 +21,18 @@ export interface CommandDefinition {
     description: string;
     category?: string;
     arguments?: ArgumentDefinition[];
-    exec: (args: Record<string, any>) => void | Promise<void>;
+    exec: (args: Record<string, never>) => void | Promise<void>;
 }
 
 // Command registry interface
 export interface CommandRegistry {
     register(command: CommandDefinition): void;
+
     unregister(name: string): void;
+
     get(name: string): CommandDefinition | undefined;
+
     list(): CommandDefinition[];
+
     listByCategory(): Record<string, CommandDefinition[]>;
 }

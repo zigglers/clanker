@@ -60,7 +60,7 @@ export function registerCommand(command: CommandDefinition): void {
 
 // Helper decorator for registering commands
 export function command(definition: Omit<CommandDefinition, 'exec'>) {
-    return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+    return function (target: never, propertyKey: string, descriptor: PropertyDescriptor) {
         const exec = descriptor.value;
         registerCommand({
             ...definition,

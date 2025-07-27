@@ -299,7 +299,7 @@ export function createToolExecutorWithRetry(registry: ToolRegistry) {
             }
         }
 
-        // Use retry executor with default 5 retries
-        return retryExecutor(toolName, parsedArgs as ToolArguments, 5);
+        // Use retry executor with default 3 retries
+        return retryExecutor(toolName, parsedArgs as ToolArguments, 3);
     };
 }

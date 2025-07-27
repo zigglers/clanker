@@ -428,4 +428,8 @@ export class GrokAgent extends EventEmitter {
             this.toolLoader.cleanup();
         }
     }
+
+    setApiKey(apiKey: string) {
+        this.client.setApiKey(apiKey);
+    }
 }
