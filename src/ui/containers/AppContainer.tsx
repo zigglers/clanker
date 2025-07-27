@@ -5,19 +5,19 @@ import { WelcomeScreen } from '../screens/WelcomeScreen';
 import { StageRouter } from '../stage/StageRouter';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { SettingsManager, Settings, ProviderModels } from '../../utils/settings-manager';
-import { actions, store } from '../../store';
+import { actions } from '../../store';
 import { registerBuiltinCommands } from '../../commands/builtin';
+import { useAgent } from '../../hooks/useAgent';
 
 interface AppContainerProps {
     onRequestReload?: () => void;
 }
 
 export const AppContainer: React.FC<AppContainerProps> = ({ onRequestReload }) => {
-    const snap = useSnapshot(store);
+    const agent = useAgent();
     const [showWelcome, setShowWelcome] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
     const [isInitialized, setIsInitialized] = useState(false);
-    const [agent, setAgent] = useState<GrokAgent | null>(null);
     const settingsManager = SettingsManager.getInstance();
 
     useEffect(() => {
@@ -30,14 +30,6 @@ export const AppContainer: React.FC<AppContainerProps> = ({ onRequestReload }) =
 
             // Load settings from disk
             actions.loadSettings();
-            
-            // If agent already exists in store, use it
-            if (store.agent) {
-                setAgent(store.agent);
-                setShowWelcome(true);
-                setIsInitialized(true);
-                return;
-            }
             
             // Check if we have settings
             const { settings, isValid } = settingsManager.loadSettings();
@@ -63,9 +55,8 @@ export const AppContainer: React.FC<AppContainerProps> = ({ onRequestReload }) =
                     // Wait for tools to load
                     await newAgent.waitForToolsToLoad();
                     
-                    // Set agent in global store and local state
+                    // Set agent in global store
                     actions.setAgent(newAgent);
-                    setAgent(newAgent);
                     
                     // Show welcome screen
                     setShowWelcome(true);
@@ -84,6 +75,13 @@ export const AppContainer: React.FC<AppContainerProps> = ({ onRequestReload }) =
 
         initialize();
     }, []);
+    
+    // Show welcome screen when agent becomes available
+    useEffect(() => {
+        if (agent && isInitialized && !showSettings) {
+            setShowWelcome(true);
+        }
+    }, [agent, isInitialized, showSettings]);
 
     const handleWelcomeComplete = () => {
         setShowWelcome(false);
@@ -116,9 +114,8 @@ export const AppContainer: React.FC<AppContainerProps> = ({ onRequestReload }) =
             // Wait for tools to load
             await newAgent.waitForToolsToLoad();
 
-            // Update the global store and local state
+            // Update the global store
             actions.setAgent(newAgent);
-            setAgent(newAgent);
             actions.clearMessages();
 
             // Update store settings
