@@ -100,7 +100,7 @@ export class GrokClient {
                 temperature: requestPayload.temperature as number,
                 max_tokens: requestPayload.max_tokens as number,
                 stream: false,
-                ...(tools && tools.length > 0 ? { tools, tool_choice: requestPayload.tool_choice } : {}),
+                ...(tools && tools.length > 0 ? { tools, tool_choice: requestPayload.tool_choice as any } : {}),
                 ...(searchOptions ? searchOptions : {})
             });
 
@@ -149,7 +149,7 @@ export class GrokClient {
                 temperature: requestPayload.temperature as number,
                 max_tokens: requestPayload.max_tokens as number,
                 stream: true,
-                ...(tools && tools.length > 0 ? { tools, tool_choice: requestPayload.tool_choice } : {}),
+                ...(tools && tools.length > 0 ? { tools, tool_choice: requestPayload.tool_choice as any } : {}),
                 ...(searchOptions ? searchOptions : {})
             });
             debug.log('[GrokClient] Stream created');

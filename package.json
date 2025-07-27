@@ -1,6 +1,6 @@
 {
   "name": "@ziggler/clanker",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "AI agents that actually do things - real actions, real changes, real time",
   "type": "module",
   "main": "dist/index.js",
@@ -59,7 +59,7 @@
   "dependencies": {
     "@types/prismjs": "^1.26.5",
     "@types/react-dom": "19.1.6",
-    "@ziggler/clanker": "^0.1.34",
+    "@ziggler/clanker": "^0.2.0",
     "axios": "^1.11.0",
     "cfonts": "^3.3.0",
     "chalk": "5.4.1",

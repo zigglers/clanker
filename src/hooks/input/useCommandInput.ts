@@ -63,6 +63,16 @@ export function useCommandInput({ messageRegistry }: UseCommandInputProps) {
       }
 
       if (cmd.execute) {
+        // Get agent from store at execution time
+        const agent = store.agent;
+        if (!agent) {
+          messageRegistry.addMessage({
+            role: "system",
+            content: "Agent not initialized. Please wait for initialization to complete.",
+          });
+          return;
+        }
+        
         await cmd.execute({
           args,
           agent,
