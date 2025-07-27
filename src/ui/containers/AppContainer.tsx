@@ -132,7 +132,7 @@ export const AppContainer: React.FC<AppContainerProps> = ({ onRequestReload }) =
 
     const handleSettingsCancel = () => {
         // If we have an agent, just close settings
-        if (snap.agent) {
+        if (store.agent) {
             setShowSettings(false);
         }
         // Otherwise, we can't proceed without settings
@@ -148,19 +148,21 @@ export const AppContainer: React.FC<AppContainerProps> = ({ onRequestReload }) =
         return (
             <SettingsScreen 
                 onComplete={handleSettingsComplete}
-                onCancel={snap.agent ? handleSettingsCancel : undefined}
+                onCancel={store.agent ? handleSettingsCancel : undefined}
             />
         );
     }
 
     // Show welcome screen
-    if (showWelcome && snap.agent) {
-        return <WelcomeScreen agent={snap.agent} onComplete={handleWelcomeComplete} />;
+    // Use store.agent directly instead of snap.agent to avoid proxy issues
+    if (showWelcome && store.agent) {
+        return <WelcomeScreen agent={store.agent} onComplete={handleWelcomeComplete} />;
     }
 
     // Show main app with agent from store
-    if (snap.agent) {
-        return <StageRouter agent={snap.agent} />;
+    // Use store.agent directly instead of snap.agent to avoid proxy issues
+    if (store.agent) {
+        return <StageRouter agent={store.agent} />;
     }
 
     // This shouldn't happen, but show settings as fallback

@@ -33,7 +33,13 @@ export const useMessageInput = ({
 
     const sendMessage = useCallback(
         async (content: string) => {
-            if (!content.trim() || !agent) return;
+            debug.log('[useMessageInput] sendMessage called with:', content);
+            debug.log('[useMessageInput] agent exists:', !!agent);
+            
+            if (!content.trim() || !agent) {
+                debug.log('[useMessageInput] Skipping - no content or agent');
+                return;
+            }
 
             const userMessage = {
                 role: "user" as const,
@@ -292,7 +298,7 @@ export const useMessageInput = ({
                 }
             }
         },
-        [agent, messageRegistry, executionRegistry, processingStartTime]
+        [agent, messageRegistry, executionRegistry, processingStartTime, snap.autoEditEnabled, snap.model]
     );
 
     return {

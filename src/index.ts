@@ -450,8 +450,3 @@ program
 
 // Parse arguments
 program.parse(process.argv);
-
-// If no command is provided, show help
-if (process.argv.length <= 2) {
-    program.help();
-}

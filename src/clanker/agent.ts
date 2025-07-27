@@ -100,6 +100,7 @@ export class GrokAgent extends EventEmitter {
         systemPrompt?: string,
         stream: boolean = false
     ): Promise<string | AsyncGenerator<StreamingChunk, void, unknown>> {
+        debug.log('[GrokAgent] chat called with', messages.length, 'messages, stream:', stream);
         const allMessages: GrokMessage[] = [];
 
         // Add system prompt if provided
