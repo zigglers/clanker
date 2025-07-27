@@ -1,5 +1,5 @@
 /**
- * Tool installer for downloading and installing Clanker tools
+ * Tool installer for downloading and installing Rachet tools
  */
 
 import * as fs from 'fs/promises';

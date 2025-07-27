@@ -160,7 +160,7 @@ Create and share your own tools with the community:
 npx create-clanker-tool my-awesome-tool
 
 # Or start from template
-git clone https://github.com/ziggle-dev/clanker-tool my-tool
+git clone https://github.com/zigglers/rachet-tool my-tool
 cd my-tool
 
 # Install dependencies
@@ -174,7 +174,7 @@ clanker -I ./  # Install from current directory
 npm run publish
 ```
 
-Visit the [Tool Development Guide](https://github.com/ziggle-dev/clanker/wiki/Tool-Development) for detailed instructions.
+Visit the [Tool Development Guide](https://github.com/zigglers/clanker/wiki/Tool-Development) for detailed instructions.
 
 ## Common Tasks
 
@@ -294,26 +294,26 @@ This shift from passive suggestions to active assistance means you spend less ti
 
 ## Documentation
 
-- 🚀 **[Getting Started](https://github.com/ziggle-dev/clanker/wiki/Getting-Started)** - Installation and first steps
-- 🛠️ **[Tool Development](https://github.com/ziggle-dev/clanker/wiki/Tool-Development)** - Create custom tools
-- 📦 **[Tool Registry](https://github.com/ziggle-dev/clanker-tools)** - Browse available tools
-- 🏗️ **[Architecture](https://github.com/ziggle-dev/clanker/wiki/Architecture)** - How Clanker works
-- 📚 **[API Reference](https://github.com/ziggle-dev/clanker/wiki/API-Reference)** - Complete API docs
+- 🚀 **[Getting Started](https://github.com/zigglers/clanker/wiki/Getting-Started)** - Installation and first steps
+- 🛠️ **[Tool Development](https://github.com/zigglers/clanker/wiki/Tool-Development)** - Create custom tools
+- 📦 **[Tool Registry](https://github.com/zigglers/rachet)** - Browse available tools
+- 🏗️ **[Architecture](https://github.com/zigglers/clanker/wiki/Architecture)** - How Clanker works
+- 📚 **[API Reference](https://github.com/zigglers/clanker/wiki/API-Reference)** - Complete API docs
 
 ## Contributing
 
 We welcome contributions! Here's how to get involved:
 
-- 🐛 [Report bugs](https://github.com/ziggle-dev/clanker/issues/new?template=bug_report.md)
-- 💡 [Request features](https://github.com/ziggle-dev/clanker/issues/new?template=feature_request.md)  
-- 🛠️ [Submit tools](https://github.com/ziggle-dev/clanker-tools/issues/new?template=tool_submission.md)
-- 📖 [Improve docs](https://github.com/ziggle-dev/clanker/wiki)
+- 🐛 [Report bugs](https://github.com/zigglers/clanker/issues/new?template=bug_report.md)
+- 💡 [Request features](https://github.com/zigglers/clanker/issues/new?template=feature_request.md)  
+- 🛠️ [Submit tools](https://github.com/zigglers/rachet/issues/new?template=tool_submission.md)
+- 📖 [Improve docs](https://github.com/zigglers/clanker/wiki)
 
 ### Development Setup
 
 ```bash
 # Clone the repo
-git clone https://github.com/ziggle-dev/clanker.git
+git clone https://github.com/zigglers/clanker.git
 cd clanker
 
 # Install dependencies
@@ -331,21 +331,21 @@ npm run build
 
 ## Community
 
-- 💬 [GitHub Discussions](https://github.com/ziggle-dev/clanker/discussions) - Ask questions, share ideas
-- 🌟 [Show & Tell](https://github.com/ziggle-dev/clanker/discussions/categories/show-and-tell) - Share your tools and workflows
-- 🐛 [Issue Tracker](https://github.com/ziggle-dev/clanker/issues) - Report bugs and request features
+- 💬 [GitHub Discussions](https://github.com/zigglers/clanker/discussions) - Ask questions, share ideas
+- 🌟 [Show & Tell](https://github.com/zigglers/clanker/discussions/categories/show-and-tell) - Share your tools and workflows
+- 🐛 [Issue Tracker](https://github.com/zigglers/clanker/issues) - Report bugs and request features
 
 ## License
 
-MIT © [Ziggler](https://github.com/ziggle-dev)
+MIT © [Ziggler](https://github.com/zigglers)
 
 ---
 
 <div align="center">
   <p><strong>Stop copying suggestions. Start shipping changes.</strong></p>
   <p>
-    <a href="https://github.com/ziggle-dev/clanker">⭐ Star on GitHub</a> • 
-    <a href="https://github.com/ziggle-dev/clanker/wiki/Getting-Started">📚 Get Started</a> • 
-    <a href="https://twitter.com/intent/tweet?text=Check%20out%20Clanker%20-%20AI%20agents%20that%20actually%20DO%20things!&url=https://github.com/ziggle-dev/clanker">🐦 Share</a>
+    <a href="https://github.com/zigglers/clanker">⭐ Star on GitHub</a> • 
+    <a href="https://github.com/zigglers/clanker/wiki/Getting-Started">📚 Get Started</a> • 
+    <a href="https://twitter.com/intent/tweet?text=Check%20out%20Clanker%20-%20AI%20agents%20that%20actually%20DO%20things!&url=https://github.com/zigglers/clanker">🐦 Share</a>
   </p>
 </div>

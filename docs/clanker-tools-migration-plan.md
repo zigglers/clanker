@@ -1,7 +1,7 @@
-# Clanker Tools Repository Migration Plan
+# Rachet Repository Migration Plan
 
 ## Overview
-This document outlines the migration strategy for transforming the clanker-tools repository into a modern, CI/CD-driven tool registry with automatic building, testing, and publishing.
+This document outlines the migration strategy for transforming the rachet repository into a modern, CI/CD-driven tool registry with automatic building, testing, and publishing.
 
 ## Current State vs Target State
 
@@ -26,7 +26,7 @@ This document outlines the migration strategy for transforming the clanker-tools
 
 1. **Create new repository structure**:
    ```
-   clanker-tools/
+   rachet/
    ├── .github/
    │   ├── workflows/
    │   │   ├── tool-submission.yml    # Main CI/CD workflow

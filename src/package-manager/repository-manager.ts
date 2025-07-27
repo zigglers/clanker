@@ -21,20 +21,13 @@ interface RepositorySettings {
 }
 
 const DEFAULT_REPOSITORY: Repository = {
-    url: 'https://github.com/ziggle-dev/clanker-tools',
-    name: 'Official Clanker Tools',
-    description: 'The official Clanker tool registry',
+    url: 'https://github.com/zigglers/rachet',
+    name: 'Official Rachet Registry',
+    description: 'The official Rachet tool registry',
     enabled: true,
     addedAt: new Date().toISOString()
 };
 
-const CORE_TOOLS_REPOSITORY: Repository = {
-    url: 'https://github.com/ziggle-dev/clanker-core-tools',
-    name: 'clanker-core-tools',
-    description: 'Core tools for Clanker CLI',
-    enabled: true,
-    addedAt: new Date().toISOString()
-};
 
 export class RepositoryManager {
     private settingsPath: string;
@@ -56,12 +49,13 @@ export class RepositoryManager {
                 await this.saveSettings(allSettings);
             }
             
-            // Ensure core tools repository is present (for v0.1.31+)
-            const hasCoreTools = allSettings.repositories.some(r => 
+            // Remove core tools repository if present (no longer needed)
+            const coreToolsIndex = allSettings.repositories.findIndex(r => 
+                r.url === 'https://github.com/zigglers/clanker-core-tools' ||
                 r.url === 'https://github.com/ziggle-dev/clanker-core-tools'
             );
-            if (!hasCoreTools) {
-                allSettings.repositories.push(CORE_TOOLS_REPOSITORY);
+            if (coreToolsIndex !== -1) {
+                allSettings.repositories.splice(coreToolsIndex, 1);
                 await this.saveSettings(allSettings);
             }
             

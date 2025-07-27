@@ -230,7 +230,7 @@ This command:
 
 Tools in the registry follow this structure:
 ```
-clanker-tools/
+rachet/
 └── tools/
     └── your-org/
         └── your-tool/
@@ -246,7 +246,7 @@ clanker-tools/
 
 ### Submission Process
 
-1. Fork [clanker-tools](https://github.com/ziggle-dev/clanker-tools)
+1. Fork [rachet](https://github.com/zigglers/rachet)
 2. Add your tool following the structure above:
    - Include only source files in `src/`
    - Include `package.json` with build scripts
@@ -275,7 +275,7 @@ Clanker supports multiple tool repositories for:
 
 ```bash
 # Add by GitHub URL
-clanker --add-repo "myorg/private-clanker-tools"
+clanker --add-repo "myorg/private-rachet-tools"
 
 # Full URL also works
 clanker --add-repo "https://github.com/myorg/private-tools"
@@ -293,8 +293,8 @@ clanker --remove-repo "myorg/private-tools"
 clanker --list-repos
 
 # Shows:
-# 1. Official Clanker Tools (default)
-#    URL: https://github.com/ziggle-dev/clanker-tools
+# 1. Official Rachet Tools (default)
+#    URL: https://github.com/zigglers/rachet
 #    Status: ✅ Enabled
 # 
 # 2. myorg/private-tools
@@ -565,10 +565,10 @@ A: Use `clanker --debug` to see detailed execution logs.
 
 ## Get Involved
 
-- 🐛 [Report issues](https://github.com/ziggle-dev/clanker/issues)
-- 💡 [Suggest features](https://github.com/ziggle-dev/clanker/discussions)
-- 🛠️ [Browse tools](https://github.com/ziggle-dev/clanker-tools)
-- 👥 [Join community](https://github.com/ziggle-dev/clanker/discussions)
+- 🐛 [Report issues](https://github.com/zigglers/clanker/issues)
+- 💡 [Suggest features](https://github.com/zigglers/clanker/discussions)
+- 🛠️ [Browse tools](https://github.com/zigglers/rachet)
+- 👥 [Join community](https://github.com/zigglers/clanker/discussions)
 
 ---
 

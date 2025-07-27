@@ -21,7 +21,7 @@ export class RegistryClient {
   private repoManager: RepositoryManager;
 
   constructor(options: PackageManagerOptions = {}) {
-    this.registryUrl = options.registryUrl || 'https://raw.githubusercontent.com/ziggle-dev/clanker-tools/main';
+    this.registryUrl = options.registryUrl || 'https://raw.githubusercontent.com/zigglers/rachet/main';
     this.cacheDir = options.cacheDir || path.join(process.env.HOME || '', '.clanker', 'cache');
     this.repoManager = new RepositoryManager();
     

@@ -162,11 +162,11 @@ The \`bin/\` directory will be automatically generated during the CI/CD build pr
         const encodedBody = encodeURIComponent(prBody);
         
         // 8. Create GitHub PR URL
-        const baseRepo = 'ziggle-dev/clanker-tools';
+        const baseRepo = 'zigglers/rachet';
         const prUrl = `https://github.com/${baseRepo}/compare/main...main?quick_pull=1&title=${encodedTitle}&body=${encodedBody}`;
         
         console.log('📝 Publishing Instructions:\n');
-        console.log('1. Fork the clanker-tools repository:');
+        console.log('1. Fork the rachet repository:');
         console.log(`   https://github.com/${baseRepo}\n`);
         
         console.log('2. Create the following directory structure in your fork:');

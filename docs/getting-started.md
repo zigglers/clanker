@@ -19,7 +19,7 @@ npx @ziggler/clanker
 ### From Source
 
 ```bash
-git clone https://github.com/ziggle-dev/clanker.git
+git clone https://github.com/zigglers/clanker.git
 cd clanker
 npm install
 npm run build
@@ -247,6 +247,6 @@ For large operations:
 
 ## Getting Help
 
-- **Issues**: [GitHub Issues](https://github.com/ziggle-dev/clanker/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/ziggle-dev/clanker/discussions)
-- **Updates**: Watch the [repository](https://github.com/ziggle-dev/clanker) for updates
+- **Issues**: [GitHub Issues](https://github.com/zigglers/clanker/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/zigglers/clanker/discussions)
+- **Updates**: Watch the [repository](https://github.com/zigglers/clanker) for updates

@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.8] - 2025-07-27
+
+### Changed
+- Renamed clanker-tools repository to rachet
+- Updated all repository references from ziggle-dev to zigglers organization
+- Changed default registry URL from github.com/ziggle-dev/clanker-tools to github.com/zigglers/rachet
+- Removed core-tools repository as it's no longer needed
+- All @ziggler/clanker dependencies now use "*" to always get latest version
+
+### Fixed
+- Updated all documentation to reflect new repository structure
+- Fixed all GitHub URLs to point to zigglers organization
+- Updated CI/CD workflows for new repository names
+
 ## [0.2.3] - 2025-07-27
 
 ### Added
@@ -68,7 +82,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.35] - 2025-07-27
 
 ### Added
-- Support for new clanker-tools registry architecture with `registry.json` at repository root
+- Support for new rachet registry architecture with `registry.json` at repository root
 - Enhanced registry client to fetch detailed metadata from `tools/{org}/{name}/metadata.json`
 - Improved debug logging for registry operations
 - Support for new versioned tool directory structure

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Validates a tool submission for the clanker-tools registry
+ * Validates a tool submission for the rachet registry
  * Ensures proper structure and buildability
  */
 

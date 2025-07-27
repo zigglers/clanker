@@ -29,7 +29,7 @@ export class ExperimentalToolManager {
     constructor(private options: PackageManagerOptions = {}) {
         const baseDir = options.toolsDir || path.join(process.env.HOME || '', '.clanker', 'tools');
         this.manifestPath = path.join(baseDir, 'experimental-manifest.json');
-        this.registryUrl = 'https://api.github.com/repos/ziggle-dev/clanker-tools';
+        this.registryUrl = 'https://api.github.com/repos/zigglers/rachet';
     }
 
     /**
@@ -144,7 +144,7 @@ export class ExperimentalToolManager {
                         continue; // Skip if ref is not a string
                     }
                     // Match PR head ref format: org/tool@version
-                    // Example: ziggle-dev/clanker-tools@1.0.0
+                    // Example: zigglers/rachet@1.0.0
                     if (!head.ref.match(/^[^/]+\/[^/]+@[\d.]+$/)) {
                         continue; // Skip if not a tool submission
                     }
@@ -155,7 +155,7 @@ export class ExperimentalToolManager {
                     // Add tool to list
                     // This is a tool submission PR
                     // Experimental tools from PRs
-                    // Example: ziggle-dev/clanker-tools@1.0.0
+                    // Example: zigglers/rachet@1.0.0
                     // This is a tool submission PR
                     tools.push({
                         org,
@@ -227,7 +227,7 @@ export class ExperimentalToolManager {
         }
 
         // Download tool from branch
-        const toolUrl = `https://raw.githubusercontent.com/ziggle-dev/clanker-tools/${branchName}/tools/${org}/${name}`;
+        const toolUrl = `https://raw.githubusercontent.com/zigglers/rachet/${branchName}/tools/${org}/${name}`;
 
         // Get latest version from branch
         const versionsResponse = await fetch(`${toolUrl}`, {
@@ -319,7 +319,7 @@ export class ExperimentalToolManager {
             try {
                 // Check if tool is now in main registry
                 const registryResponse = await fetch(
-                    `https://raw.githubusercontent.com/ziggle-dev/clanker-tools/main/tools/${tool.org}/${tool.name}/metadata.json`,
+                    `https://raw.githubusercontent.com/zigglers/rachet/main/tools/${tool.org}/${tool.name}/metadata.json`,
                     {headers: {'User-Agent': 'clanker-cli'}}
                 );
 

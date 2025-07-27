@@ -5,7 +5,7 @@ This guide will walk you through creating your first Clanker tool in 5 minutes.
 ## 1. Create Your Tool Project
 
 ```bash
-npx create-clanker-tool
+npx create-rachet-tool
 ```
 
 Answer the prompts:
@@ -118,8 +118,8 @@ This will:
 
 - Read the full [Tool Development Guide](tools.md)
 - Explore the [Package Manager](package-manager.md)
-- Browse [existing tools](https://github.com/ziggle-dev/clanker-tools)
-- Join the [community](https://github.com/ziggle-dev/clanker/discussions)
+- Browse [existing tools](https://github.com/zigglers/rachet)
+- Join the [community](https://github.com/zigglers/clanker/discussions)
 
 ## Example: Weather Tool
 

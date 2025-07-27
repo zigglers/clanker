@@ -1,4 +1,4 @@
-# Clanker Tools Build Pipeline Design
+# Rachet Build Pipeline Design
 
 ## Overview
 This document details the automated build pipeline for clanker tools, from source submission to published registry entry.
@@ -177,7 +177,7 @@ async function testToolIntegration(toolPath, manifest) {
   
   try {
     // 1. Clone latest clanker
-    await execAsync(`git clone https://github.com/ziggle-dev/clanker ${testDir}/clanker`);
+    await execAsync(`git clone https://github.com/zigglers/clanker ${testDir}/clanker`);
     
     // 2. Install dependencies
     await execAsync('npm install', { cwd: `${testDir}/clanker` });

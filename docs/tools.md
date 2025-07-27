@@ -1,4 +1,4 @@
-# Clanker Tools Documentation
+# Rachet Tools Documentation
 
 This guide covers the built-in tools available in Clanker and how to create your own custom tools.
 
@@ -492,7 +492,7 @@ clanker --uninstall org/tool-name
 1. Create your tool using `create-clanker-tool`
 2. Test thoroughly with local installation
 3. Run `npm run publish:tool` to validate structure
-4. Submit PR to [clanker-tools](https://github.com/ziggle-dev/clanker-tools) with:
+4. Submit PR to [rachet](https://github.com/zigglers/rachet) with:
    - Source code in `src/` directory
    - `package.json` with build scripts
    - Documentation in `README.md`
