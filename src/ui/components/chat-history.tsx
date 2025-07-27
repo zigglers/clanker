@@ -10,6 +10,30 @@ import {VirtualScroll} from "./VirtualScroll";
 import Gradient from 'ink-gradient';
 import BigText from 'ink-big-text';
 import {debug} from '../../utils/debug-logger';
+import * as fs from 'fs';
+import * as path from 'path';
+
+// Get version from package.json
+let version = '0.0.0';
+try {
+    const packageJsonPath = path.join(__dirname, '../../../package.json');
+    if (fs.existsSync(packageJsonPath)) {
+        const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+        version = packageJson.version || '0.0.0';
+    }
+} catch {
+    // Try alternative paths
+    try {
+        const altPath = path.join(process.cwd(), 'package.json');
+        if (fs.existsSync(altPath)) {
+            const packageJson = JSON.parse(fs.readFileSync(altPath, 'utf8'));
+            version = packageJson.version || '0.0.0';
+        }
+    } catch {
+        // Use fallback version
+        version = '0.2.3';
+    }
+}
 
 /**
  * Format tool execution display - shows tool name and primary argument
@@ -303,38 +327,51 @@ export function ChatHistory({
         return baseHeight;
     }, [filteredMessages, executionRegistry]);
 
-    // Show logo only when there are no messages
-    if (messages.length === 0) {
-        return (
-            <Box flexDirection="column" height={maxHeight} paddingX={2}>
-                <Box paddingX={2} flexShrink={0} height={8}>
-                    <Box justifyContent="center" marginBottom={1}>
+    // Always show header with messages below
+    const headerHeight = 5;
+    const contentHeight = maxHeight - headerHeight;
+
+    return (
+        <Box flexDirection="column" height={maxHeight}>
+            {/* Fixed header */}
+            <Box flexDirection="column" flexShrink={0} height={headerHeight}>
+                <Box flexDirection="row" justifyContent="space-between" alignItems="center" paddingX={2}>
+                    <Box>
                         <Gradient name="passion">
-                            <BigText text="CLANK" font="chrome" />
+                            <Text bold>CLANK</Text>
                         </Gradient>
                     </Box>
+                    <Box>
+                        <Text dimColor>v{version}</Text>
+                    </Box>
+                </Box>
+                <Box paddingX={2}>
+                    <Text dimColor>{'─'.repeat(80)}</Text>
                 </Box>
             </Box>
-        );
-    }
 
-    // Use virtual scrolling if enabled, otherwise render all messages
-    if (snap.virtualScrollingEnabled) {
-        return (
-            <VirtualScroll 
-                maxHeight={maxHeight}
-                estimatedItemHeight={4}
-                getItemHeight={getItemHeight}
-            >
-                {chatEntries}
-            </VirtualScroll>
-        );
-    } else {
-        // Render all messages without virtual scrolling
-        return (
-            <Box flexDirection="column" overflow="hidden" paddingX={0}>
-                {chatEntries}
+            {/* Messages area */}
+            <Box flexDirection="column" height={contentHeight} overflow="hidden">
+                {messages.length === 0 ? (
+                    <Box flexDirection="column" justifyContent="center" alignItems="center" height="100%">
+                        <Text dimColor>Ready to assist. Type your request below.</Text>
+                    </Box>
+                ) : (
+                    snap.virtualScrollingEnabled ? (
+                        <VirtualScroll 
+                            maxHeight={contentHeight}
+                            estimatedItemHeight={4}
+                            getItemHeight={getItemHeight}
+                        >
+                            {chatEntries}
+                        </VirtualScroll>
+                    ) : (
+                        <Box flexDirection="column" overflow="hidden" paddingX={0}>
+                            {chatEntries}
+                        </Box>
+                    )
+                )}
             </Box>
-        );
-    }
+        </Box>
+    );
 }
