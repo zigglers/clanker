@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { GrokAgent } from '../../clanker/agent';
-import { ClankerLogo } from '../components/ClankerLogo';
+import { WelcomeScreen } from '../screens/WelcomeScreen';
 import { StageRouter } from '../stage/StageRouter';
 import { StageType } from '../stage/types';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { SettingsManager, Settings, ProviderModels } from '../../utils/settings-manager';
 import { actions } from '../../store';
 import { registerBuiltinCommands } from '../../commands/builtin';
-import { GrokAgent } from '../../clanker/agent';
 
 interface AppContainerProps {
     agent?: GrokAgent;
@@ -15,12 +14,15 @@ interface AppContainerProps {
 }
 
 export const AppContainer: React.FC<AppContainerProps> = ({ agent: initialAgent, onRequestReload }) => {
-    const [showLogo, setShowLogo] = useState(true);
+    const [showWelcome, setShowWelcome] = useState(true);
     const [showSettings, setShowSettings] = useState(false);
     const [agent, setAgent] = useState<GrokAgent | null>(initialAgent || null);
     const settingsManager = SettingsManager.getInstance();
     
     useEffect(() => {
+        // Clear the screen before showing anything
+        console.clear();
+        
         // Register built-in commands once on app startup
         registerBuiltinCommands();
         
@@ -39,14 +41,14 @@ export const AppContainer: React.FC<AppContainerProps> = ({ agent: initialAgent,
         // Check if settings need configuration
         if (!agent && settingsManager.needsConfiguration()) {
             setShowSettings(true);
-            setShowLogo(false);
+            setShowWelcome(false);
         }
     }, [agent]);
     
-    const handleLogoComplete = () => {
-        setShowLogo(false);
+    const handleWelcomeComplete = () => {
+        setShowWelcome(false);
         
-        // After logo, check if we need settings
+        // After welcome, check if we need settings
         if (!agent) {
             setShowSettings(true);
         }
@@ -67,10 +69,7 @@ export const AppContainer: React.FC<AppContainerProps> = ({ agent: initialAgent,
                 baseURL = providerConfig.baseURL;
             }
             
-            // Ensure core tools are installed
-            const {CoreToolsManager} = await import('../../package-manager/core-tools');
-            const coreToolsManager = new CoreToolsManager();
-            await coreToolsManager.ensureCoreToolsInstalled();
+            // No core tools - all tools come from registry
             
             // Create new agent with all the proper settings
             const newAgent = new GrokAgent({
@@ -96,9 +95,10 @@ export const AppContainer: React.FC<AppContainerProps> = ({ agent: initialAgent,
             actions.setDangerousBypassPermission(settings.dangerousBypassPermission);
             actions.updateConfirmationSettings(settings.confirmationSettings);
             
-            // Hide settings and show logo for normal flow
+            // Hide settings and show welcome for normal flow
             setShowSettings(false);
-            setShowLogo(true);
+            console.clear();  // Clear screen before showing welcome
+            setShowWelcome(true);
             
             console.log('Agent initialized successfully');
         } catch (error) {
@@ -124,8 +124,8 @@ export const AppContainer: React.FC<AppContainerProps> = ({ agent: initialAgent,
         );
     }
     
-    if (showLogo && agent) {
-        return <ClankerLogo agent={agent} onComplete={handleLogoComplete} />;
+    if (showWelcome && agent) {
+        return <WelcomeScreen agent={agent} onComplete={handleWelcomeComplete} />;
     }
     
     if (agent) {
