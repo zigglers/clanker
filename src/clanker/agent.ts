@@ -88,7 +88,7 @@ export class GrokAgent extends EventEmitter {
             directories: directories.length > 0 ? directories : undefined,
             recursive: true,
             watch: options.watchTools ?? false,
-            loadBuiltins: true
+            loadBuiltins: false  // No builtin tools - all from registry
         });
 
         // Tools will be loaded when needed via waitForToolsToLoad()

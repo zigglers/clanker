@@ -321,12 +321,7 @@ program
                 process.exit(1);
             }
 
-            // Ensure core tools are installed on first run (for any mode that uses tools)
-            if (options.listTools || options.prompt || !options.publish) {
-                const {CoreToolsManager} = await import('./package-manager/core-tools');
-                const coreToolsManager = new CoreToolsManager();
-                await coreToolsManager.ensureCoreToolsInstalled();
-            }
+            // No core tools - all tools come from registry
 
             // List tools mode
             if (options.listTools) {
@@ -408,6 +403,8 @@ program
                     setTimeout(() => actions.setExitConfirmation(false), 3000);
                 }
             });
+
+            // No core tools - all tools come from registry
 
             // Check if we have settings or need to show settings screen
             const {SettingsManager, ProviderModels} = await import("./utils/settings-manager");

@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2025-07-27
+
+### Changed
+- **BREAKING**: Removed all builtin/core tools - all tools now come from the registry
+- Redesigned startup logo to show current working directory and loaded tools in a grid
+- Logo now displays tool count and names, truncating long lists with "... and X more"
+- Disabled loadBuiltins in tool loader - only registry-installed tools are loaded
+
+### Removed
+- Core tools manager and automatic core tools installation
+- Builtin tools from the package (pending removal of tools/dynamic folder)
+
+### Fixed
+- Tool count now properly updates in the logo after tools are loaded
+
 ## [0.1.35] - 2025-07-27
 
 ### Added
