@@ -18,11 +18,21 @@ https://github.com/user-attachments/assets/2465c9b7-8f13-4a39-9486-f7ca032dadc4
 ## Quick Start
 
 ```bash
+# Install Clanker globally
 npm install -g @ziggler/clanker
+
+# Install essential tools
+clanker -I ziggle-dev/bash
+clanker -I ziggle-dev/view-file
+clanker -I ziggle-dev/write-to-file
+clanker -I ziggle-dev/multi-edit
+clanker -I ziggle-dev/search
+
+# Start using Clanker
 clanker
 ```
 
-That's it. Clanker will guide you through setup on first run.
+Clanker will guide you through API key setup on first run.
 
 ## What's New in v0.2.0
 
@@ -51,6 +61,17 @@ That's it. Clanker will guide you through setup on first run.
 ✓ Created Button.tsx with TypeScript props
 ✓ Added Button.test.tsx with coverage
 ✓ Updated component index exports
+
+# Work with files and directories
+> "Show me the structure of the src folder"
+✓ Listed all files and directories
+✓ Highlighted important configuration files
+
+# Search and analyze code
+> "Find all TODO comments in the codebase"
+✓ Searched across 156 files
+✓ Found 23 TODO comments
+✓ Grouped by priority and file location
 ```
 
 ## Key Features
@@ -59,35 +80,7 @@ That's it. Clanker will guide you through setup on first run.
 Advanced order-invariant diff algorithm for reliable file editing. Multiple edit strategies ensure changes are applied correctly even in complex scenarios.
 
 ### 🛠️ **Extensible Tool System**
-Build and share custom tools with the community. Every action is a tool, and creating new ones is simple:
-
-```typescript
-import { defineTool } from '@ziggler/clanker';
-
-export default defineTool({
-  id: 'pr_ready',
-  name: 'PR Ready Check',
-  description: 'Check if code is ready for PR',
-  inputSchema: {
-    type: 'object',
-    properties: {
-      path: { type: 'string', description: 'Project path' }
-    },
-    required: ['path']
-  },
-  execute: async ({ path }) => {
-    // Run your checks here
-    const testsPass = await runTests(path);
-    const lintPass = await checkLinting(path);
-    const typesOk = await verifyTypes(path);
-    
-    return { 
-      success: testsPass && lintPass && typesOk,
-      output: 'All checks passed! Ready for PR.'
-    };
-  }
-});
-```
+Clanker uses a modular tool system where every action is performed by a tool. Tools are distributed through the package registry and can be easily installed.
 
 ### 🎨 **Beautiful Terminal UI**
 React-powered terminal interface with:
@@ -104,55 +97,119 @@ React-powered terminal interface with:
 
 ## Tool Ecosystem
 
-### Installing Tools
+### Package Manager Commands
 
 ```bash
-# Browse available tools
-clanker tools list-available
+# List all available tools in the registry
+clanker -A              # or clanker --list-available
+clanker -A 2           # Show page 2 of available tools
 
-# Install official tools
-clanker tools install bash
-clanker tools install multi_edit
-clanker tools install search
+# Search for specific tools
+clanker -S bash         # or clanker --search bash
+clanker -S "todo"      # Search for todo-related tools
 
-# Install community tools
-clanker tools install community/git-workflow
-clanker tools install community/react-refactor
+# Install tools from the registry
+clanker -I ziggle-dev/bash              # or clanker --install ziggle-dev/bash
+clanker -I ziggle-dev/bash@1.0.0        # Install specific version
+
+# List installed tools
+clanker -L              # or clanker --list
+
+# Uninstall tools
+clanker -U ziggle-dev/bash              # or clanker --uninstall ziggle-dev/bash
+
+# Update tools to latest version
+clanker --update ziggle-dev/bash
+
+# Clear package cache
+clanker --clear-cache
 ```
 
-### Core Tools Available
+### Available Tools
 
-- **bash** - Execute shell commands safely
-- **multi_edit** - Advanced file editing with conflict resolution
-- **search** - Fast code search with ripgrep
-- **view_file** - Read and analyze files
-- **write_to_file** - Create or overwrite files
-- **list** - Browse directory contents
-- **pwd** - Show current directory
-- **remove** - Delete files and directories
-- **create_todo_list** - Task management
-- **update_todo_list** - Update task status
-- **summarize** - Summarize long content
+Clanker uses an opt-in tool system. Install only the tools you need:
+
+**Essential Tools:**
+- **ziggle-dev/bash** - Execute shell commands safely
+- **ziggle-dev/view-file** - Read and analyze files
+- **ziggle-dev/write-to-file** - Create or overwrite files
+- **ziggle-dev/multi-edit** - Advanced file editing with conflict resolution
+- **ziggle-dev/search** - Fast code search with ripgrep
+
+**File Management:**
+- **ziggle-dev/list** - Browse directory contents
+- **ziggle-dev/pwd** - Show current directory
+- **ziggle-dev/remove** - Delete files and directories
+
+**Task Management:**
+- **ziggle-dev/create-todo-list** - Create task lists
+- **ziggle-dev/update-todo-list** - Update task status
+
+**Utilities:**
+- **ziggle-dev/input** - Get user input during operations
+- **ziggle-dev/summarize** - Summarize long content (coming soon)
+
+View all available tools with `clanker -A` or `clanker --list-available`
 
 ### Creating Your Own Tools
 
+Create and share your own tools with the community:
+
 ```bash
-# Start with our template
-git clone https://github.com/ziggle-dev/clanker-tool-template my-tool
+# Use the tool creation wizard
+npx create-clanker-tool my-awesome-tool
+
+# Or start from template
+git clone https://github.com/ziggle-dev/clanker-tool my-tool
 cd my-tool
 
 # Install dependencies
 npm install
 
-# Develop with hot reload
-npm run dev
-
 # Test locally
 npm run build
-clanker tools install ./dist
+clanker -I ./  # Install from current directory
 
-# Submit to registry
-npm run submit
+# Publish to registry
+npm run publish
+```
+
+Visit the [Tool Development Guide](https://github.com/ziggle-dev/clanker/wiki/Tool-Development) for detailed instructions.
+
+## Common Tasks
+
+### Getting Started
+```bash
+# Start a conversation with Clanker
+clanker
+
+# Ask Clanker to help with a specific task
+> "Help me refactor this function to use async/await"
+> "Find all TODO comments in the project"
+> "Create a new React component with TypeScript"
+```
+
+### Working with Files
+```bash
+# View file contents
+> "Show me the package.json file"
+
+# Edit files
+> "Add error handling to the login function"
+
+# Create new files
+> "Create a new test file for UserService"
+
+# Search code
+> "Find all instances of console.log"
+```
+
+### Running Commands
+```bash
+# Execute shell commands (requires bash tool)
+> "Run npm test"
+> "Show me the git status"
+> "Install the lodash package"
 ```
 
 ## Configuration
@@ -173,13 +230,26 @@ Clanker stores configuration in `~/.clanker/`:
 - **Anthropic** - Claude models
 - **Custom** - Any OpenAI-compatible endpoint
 
-Configure with:
+### Setting Up Your API Key
+
+On first run, Clanker will prompt you for an API key. You can also configure it manually:
+
 ```bash
-clanker config set provider grok
-clanker config set api-key YOUR_API_KEY
+# During first run
+clanker
+# Follow the prompts to enter your API key
+
+# Or set environment variable
+export CLANKER_API_KEY="your-api-key-here"
+
+# Or add to ~/.clanker/settings.json
+{
+  "apiKey": "your-api-key-here",
+  "provider": "grok"
+}
 ```
 
-## Common Workflows
+## Advanced Workflows
 
 ### Refactoring a Codebase
 ```bash
@@ -190,7 +260,7 @@ clanker config set api-key YOUR_API_KEY
 
 ### Setting Up a New Project
 ```bash
-> "Create a Next.js app with TypeScript and Tailwind"
+> "Create a new Express API with TypeScript"
 > "Set up ESLint and Prettier with sensible defaults"
 > "Create a GitHub Actions workflow for CI/CD"
 ```
@@ -200,6 +270,14 @@ clanker config set api-key YOUR_API_KEY
 > "Find all console.error calls and add stack traces"
 > "Add debug logging to the authentication flow"
 > "Check for potential race conditions in async code"
+```
+
+### Managing Tasks
+```bash
+# Create a todo list (requires todo tools)
+> "Create a todo list for implementing user authentication"
+> "Update task 3 to completed"
+> "Show me all pending tasks"
 ```
 
 ## Philosophy
