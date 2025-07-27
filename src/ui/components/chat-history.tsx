@@ -9,6 +9,7 @@ import {MarkdownRenderer} from "../utils/markdown-renderer";
 import {VirtualScroll} from "./VirtualScroll";
 import Gradient from 'ink-gradient';
 import BigText from 'ink-big-text';
+import {debug} from '../../utils/debug-logger';
 
 /**
  * Format tool execution display - shows tool name and primary argument
@@ -95,7 +96,7 @@ const ChatEntry = ({
     switch (entry.role) {
         case "user":
             return (
-                <Box key={index} flexDirection="column" marginTop={extraSpacing ? 2 : 1} flexShrink={0}>
+                <Box key={entry.id} flexDirection="column" marginTop={extraSpacing ? 2 : 1} flexShrink={0}>
                     <Box>
                         <Text color="gray">
                             {">"} {entry.content}
@@ -113,7 +114,7 @@ const ChatEntry = ({
             }
 
             return (
-                <Box key={index} flexDirection="column" marginTop={extraSpacing ? 3 : 2} marginBottom={1} flexShrink={0}>
+                <Box key={entry.id} flexDirection="column" marginTop={extraSpacing ? 3 : 2} marginBottom={1} flexShrink={0}>
                     <Box flexDirection="row" alignItems="flex-start">
                         <Text color="white">⏺ </Text>
                         <Box flexDirection="column" flexGrow={1}>
@@ -135,7 +136,7 @@ const ChatEntry = ({
             if (!execution) {
                 // If no execution found, show a placeholder
                 return (
-                    <Box key={index} flexDirection="column" marginTop={extraSpacing ? 2 : 1} flexShrink={0}>
+                    <Box key={entry.id} flexDirection="column" marginTop={extraSpacing ? 2 : 1} flexShrink={0}>
                         <Box>
                             <Text color="magenta">⏺</Text>
                             <Text> Tool execution pending...</Text>
@@ -161,7 +162,7 @@ const ChatEntry = ({
 
                 if (customRender) {
                     return (
-                        <Box key={index} flexDirection="column" marginTop={extraSpacing ? 2 : 1} marginBottom={1} flexShrink={0}>
+                        <Box key={entry.id} flexDirection="column" marginTop={extraSpacing ? 2 : 1} marginBottom={1} flexShrink={0}>
                             <Box>
                                 <Text color="magenta">⏺</Text>
                                 <Text> </Text>
@@ -177,7 +178,7 @@ const ChatEntry = ({
 
             // Default rendering for tools without custom renderer
             return (
-                <Box key={index} flexDirection="column" marginTop={extraSpacing ? 2 : 1} marginBottom={1} flexShrink={0}>
+                <Box key={entry.id} flexDirection="column" marginTop={extraSpacing ? 2 : 1} marginBottom={1} flexShrink={0}>
                     <Box>
                         <Text color="magenta">⏺</Text>
                         <Text> </Text>
@@ -197,6 +198,15 @@ const ChatEntry = ({
                                 <Text color="red">⎿ Error: {result.error}</Text>
                             )
                         ) : null}
+                    </Box>
+                </Box>
+            );
+
+        case "system":
+            return (
+                <Box key={entry.id} flexDirection="column" marginTop={extraSpacing ? 2 : 1} flexShrink={0}>
+                    <Box>
+                        <Text color="yellow">⚠ {entry.content}</Text>
                     </Box>
                 </Box>
             );

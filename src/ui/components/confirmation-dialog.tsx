@@ -28,6 +28,7 @@ export default function ConfirmationDialog({
     "No, with feedback",
   ];
 
+  const isTTY = process.stdin.isTTY;
   useInput((input, key) => {
     if (feedbackMode) {
       if (key.return) {
@@ -77,7 +78,7 @@ export default function ConfirmationDialog({
       }
       return;
     }
-  });
+  }, { isActive: isTTY });
 
   if (feedbackMode) {
     return (

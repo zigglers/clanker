@@ -25,6 +25,7 @@ export const SelectDropdown: React.FC<SelectDropdownProps> = ({
     });
 
     // Handle keyboard input
+    const isTTY = process.stdin.isTTY;
     useInput((input, key) => {
         if (key.escape) {
             onClose();
@@ -39,7 +40,7 @@ export const SelectDropdown: React.FC<SelectDropdownProps> = ({
             onSelect(options[highlightedIndex].value);
             onClose();
         }
-    });
+    }, { isActive: isTTY });
 
     // Ensure highlighted item is visible
     const visibleStart = Math.max(0, highlightedIndex - Math.floor(maxHeight / 2));

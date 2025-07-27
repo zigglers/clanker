@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text } from 'ink';
 import { useInput } from 'ink';
-import { GrokAgent } from '../../clanker/agent';
+import { useAgent } from '../../hooks/useAgent';
 import { ToolDefinition } from '../../registry';
 
 interface WelcomeScreenProps {
-    agent?: GrokAgent;
     onComplete: () => void;
 }
 
@@ -14,7 +13,8 @@ interface ToolInfo {
     name: string;
 }
 
-export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ agent, onComplete }) => {
+export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onComplete }) => {
+    const agent = useAgent();
     const [shouldSkip, setShouldSkip] = useState(false);
     const [colorIndex, setColorIndex] = useState(0);
     const [tools, setTools] = useState<ToolInfo[]>([]);
@@ -88,11 +88,9 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ agent, onComplete 
                     });
                 }
                 
-                console.log(`[WelcomeScreen] Loaded ${loadedTools.length} tools:`, loadedTools.map(t => t.name));
                 setTools(loadedTools);
                 setToolsLoaded(true);
             } catch (error) {
-                console.error('Failed to load tools:', error);
                 setToolsLoaded(true);
             }
         };

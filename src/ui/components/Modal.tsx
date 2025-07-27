@@ -8,6 +8,7 @@ interface ModalProps extends ModalOptions {
 
 export const Modal: React.FC<ModalProps> = ({ title, message, options, onSubmit }) => {
     const [selectedIndex, setSelectedIndex] = useState(0);
+    const isTTY = process.stdin.isTTY;
     
     useInput((input, key) => {
         // Escape key does not close the modal - use a cancel button instead
@@ -22,7 +23,7 @@ export const Modal: React.FC<ModalProps> = ({ title, message, options, onSubmit 
                 cancelled: false 
             });
         }
-    });
+    }, { isActive: isTTY });
     
     return (
         <Box

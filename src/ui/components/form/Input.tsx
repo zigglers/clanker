@@ -66,6 +66,7 @@ export const Input: React.FC<InputProps> = ({
     }, [isFocused, value]);
 
     // Handle keyboard input
+    const isTTY = process.stdin.isTTY;
     useInput((input, key) => {
         if (!isFocused) return;
 
@@ -84,7 +85,7 @@ export const Input: React.FC<InputProps> = ({
             onChange(newValue);
             setCursorPosition(cursorPosition + input.length);
         }
-    });
+    }, { isActive: isTTY });
 
     // Update cursor position when value changes externally
     useEffect(() => {

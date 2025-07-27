@@ -87,6 +87,7 @@ export const Select: React.FC<SelectProps> = ({
     };
 
     // Handle keyboard input
+    const isTTY = process.stdin.isTTY;
     useInput((input, key) => {
         if (!isFocused || options.length === 0) return;
         
@@ -117,7 +118,7 @@ export const Select: React.FC<SelectProps> = ({
             }
         }
         // Left and right arrows are now handled by the Form for navigation
-    }, { isActive: true }); // Make this input handler higher priority
+    }, { isActive: isTTY }); // Make this input handler higher priority
     
     const currentOption = options[selectedIndex] || options[0];
     const borderColor = error ? 'red' : (isFocused ? 'cyan' : 'gray');

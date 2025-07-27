@@ -8,6 +8,7 @@ interface CommandFormProps {
 
 export const CommandForm: React.FC<CommandFormProps> = ({ onCancel, onExecute }) => {
     // Handle escape key
+    const isTTY = process.stdin.isTTY;
     useInput((input, key) => {
         if (key.escape) {
             onCancel();
@@ -15,7 +16,7 @@ export const CommandForm: React.FC<CommandFormProps> = ({ onCancel, onExecute })
         if (key.return) {
             onExecute('clear', {});
         }
-    });
+    }, { isActive: isTTY });
     
     return (
         <Box

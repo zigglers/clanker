@@ -26,11 +26,12 @@ export const CommandForm: React.FC<CommandFormProps> = ({ onCancel, onExecute })
     );
     
     // Handle escape key
+    const isTTY = process.stdin.isTTY;
     useInput((input, key) => {
         if (key.escape) {
             onCancel();
         }
-    });
+    }, { isActive: isTTY });
     
     const handleSubmit = async (values: Record<string, any>) => {
         const selectedCommand = values.command;

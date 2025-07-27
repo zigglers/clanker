@@ -18,6 +18,7 @@ export default function ApiKeyInput({ onApiKeySet }: ApiKeyInputProps) {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { exit } = useApp();
+  const isTTY = process.stdin.isTTY;
 
   useInput((inputChar, key) => {
     if (isSubmitting) return;
@@ -43,7 +44,7 @@ export default function ApiKeyInput({ onApiKeySet }: ApiKeyInputProps) {
       setInput((prev) => prev + inputChar);
       setError("");
     }
-  });
+  }, { isActive: isTTY });
 
 
   const handleSubmit = async () => {

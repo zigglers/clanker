@@ -93,9 +93,16 @@ export class GrokClient {
                 (requestPayload as { search_parameters?: unknown }).search_parameters = searchOptions.search_parameters;
             }
 
-            const response = await this.client.chat.completions.create(
-                requestPayload as unknown as Parameters<typeof this.client.chat.completions.create>[0]
-            );
+            // Create the completion directly without the cast
+            const response = await this.client.chat.completions.create({
+                model: requestPayload.model as string,
+                messages: messages,
+                temperature: requestPayload.temperature as number,
+                max_tokens: requestPayload.max_tokens as number,
+                stream: false,
+                ...(tools && tools.length > 0 ? { tools, tool_choice: requestPayload.tool_choice } : {}),
+                ...(searchOptions ? searchOptions : {})
+            });
 
             return response as GrokResponse;
         } catch (error) {
@@ -134,9 +141,17 @@ export class GrokClient {
             
             // Log timing for debugging
             debug.log('[GrokClient] Creating stream with model:', requestPayload.model);
-            const stream = await this.client.chat.completions.create(
-                requestPayload as unknown as Parameters<typeof this.client.chat.completions.create>[0]
-            );
+            
+            // Create the stream directly without the cast
+            const stream = await this.client.chat.completions.create({
+                model: requestPayload.model as string,
+                messages: messages,
+                temperature: requestPayload.temperature as number,
+                max_tokens: requestPayload.max_tokens as number,
+                stream: true,
+                ...(tools && tools.length > 0 ? { tools, tool_choice: requestPayload.tool_choice } : {}),
+                ...(searchOptions ? searchOptions : {})
+            });
             debug.log('[GrokClient] Stream created');
 
             let firstChunk = true;

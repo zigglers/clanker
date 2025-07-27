@@ -10,15 +10,12 @@ import { HelpScreen } from '../screens/HelpScreen';
 import { ModalScreen } from '../screens/ModalScreen';
 import { ExitConfirmationModal } from '../screens/ExitConfirmationModal';
 import { ToolConfirmationScreen } from '../screens/ToolConfirmationScreen';
-import { GrokAgent } from '../../clanker/agent';
 import { StatusBar } from '../components/chat/StatusBar';
 import { SettingsManager } from '../../utils/settings-manager';
+import { useAgent } from '../../hooks/useAgent';
 
-interface StageRouterProps {
-    agent: GrokAgent;
-}
-
-export const StageRouter: React.FC<StageRouterProps> = ({ agent }) => {
+export const StageRouter: React.FC = () => {
+    const agent = useAgent();
     const snap = useSnapshot(store);
     const currentStage = snap.stageStack[snap.stageStack.length - 1];
     
@@ -29,6 +26,7 @@ export const StageRouter: React.FC<StageRouterProps> = ({ agent }) => {
     }, []);
     
     // Global keyboard input handler
+    const isTTY = process.stdin.isTTY;
     useInput((inputChar: string, key: { [key: string]: boolean }) => {
         // Skip if we're in the chat container (it has its own handler)
         if (currentStage.type === StageType.CHAT) return;
@@ -37,12 +35,12 @@ export const StageRouter: React.FC<StageRouterProps> = ({ agent }) => {
         if (inputChar.charCodeAt(0) === 3 || (key.ctrl && inputChar === 'c')) {
             handleCtrlC();
         }
-    });
+    }, { isActive: isTTY });
     
     const renderStage = () => {
         switch (currentStage.type) {
             case StageType.CHAT:
-                return <ChatContainer agent={agent} />;
+                return <ChatContainer />;
                 
             case StageType.COMMAND_PALETTE:
                 return <CommandPaletteScreen />;
@@ -85,7 +83,7 @@ export const StageRouter: React.FC<StageRouterProps> = ({ agent }) => {
                 />;
                 
             default:
-                return <ChatContainer agent={agent} />;
+                return <ChatContainer />;
         }
     };
     

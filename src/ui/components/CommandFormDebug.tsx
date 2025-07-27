@@ -27,11 +27,12 @@ export const CommandForm: React.FC<CommandFormProps> = ({ onCancel, onExecute })
     }, []); // Empty deps since registry shouldn't change
     
     // Handle escape key
+    const isTTY = process.stdin.isTTY;
     useInput((input, key) => {
         if (key.escape) {
             onCancel();
         }
-    });
+    }, { isActive: isTTY });
     
     const handleSubmit = async (values: Record<string, any>) => {
         console.log('[CommandForm] Submit:', values);

@@ -24,6 +24,7 @@ export const Button: React.FC<ButtonProps> = ({
     const [isPressed, setIsPressed] = useState(false);
 
     // Handle keyboard input
+    const isTTY = process.stdin.isTTY;
     useInput((input, key) => {
         if (!isFocused || disabled) return;
 
@@ -35,7 +36,7 @@ export const Button: React.FC<ButtonProps> = ({
                 onPress();
             }, 150);
         }
-    });
+    }, { isActive: isTTY });
 
     // Determine colors based on state and variant
     const getColors = () => {

@@ -17,24 +17,21 @@ import {useRegistries} from "../../hooks/useRegistries";
 import {store, actions} from "../../store";
 import {StageType} from "../stage/types";
 import {debug} from "../../utils/debug-logger";
-
-interface ChatContainerProps {
-    agent: GrokAgent;
-}
+import {useAgent} from "../../hooks/useAgent";
 
 /**
  * Main chat container component
  * Manages the overall chat interface and state
  */
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-export function ChatContainer({agent}: ChatContainerProps) {
-    debug.log('[ChatContainer] Rendering with agent:', !!agent);
+export function ChatContainer() {
+    const agent = useAgent();
     // Use Valtio's useSnapshot as intended
     const snap = useSnapshot(store);
 
     // Get registries
     const {messageRegistry, executionRegistry} = useRegistries();
-    const toolRegistry = agent.getRegistry();
+    const toolRegistry = agent?.getRegistry();
     const {handleConfirmation, handleRejection} = useConfirmationHandler();
 
     // Timer for processing duration
@@ -50,7 +47,6 @@ export function ChatContainer({agent}: ChatContainerProps) {
         handleUpArrow,
         handleDownArrow,
     } = useInputHandler({
-        agent,
         messageRegistry,
         executionRegistry,
         processingStartTime,
@@ -75,8 +71,8 @@ export function ChatContainer({agent}: ChatContainerProps) {
 
 
     // Handle keyboard input directly here
+    const isTTY = process.stdin.isTTY;
     useInput((inputChar: string, key: { [key: string]: boolean }) => {
-        debug.log('[ChatContainer] Key pressed:', { inputChar: inputChar.charCodeAt(0), key });
         // Skip all input if confirmation is active
         if (snap.confirmationOptions) return;
 
@@ -131,7 +127,7 @@ export function ChatContainer({agent}: ChatContainerProps) {
             }
             actions.setInputValue(snap.inputValue + inputChar);
         }
-    });
+    }, { isActive: isTTY });
 
     // Command execution is now handled in CommandPaletteScreen
 

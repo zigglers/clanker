@@ -7,13 +7,12 @@ import { getDefaultCommands } from '../../utils/commands';
 import { ConfirmationService } from '../../utils/confirmation-service';
 
 interface UseCommandInputProps {
-  agent: GrokAgent;
   messageRegistry: typeof MessageRegistryType;
 }
 
 const COMMAND_PREFIX = "/";
 
-export function useCommandInput({ agent, messageRegistry }: UseCommandInputProps) {
+export function useCommandInput({ messageRegistry }: UseCommandInputProps) {
   const confirmationService = ConfirmationService.getInstance();
   const commands = getDefaultCommands();
   
@@ -102,7 +101,7 @@ export function useCommandInput({ agent, messageRegistry }: UseCommandInputProps
         });
       }
     },
-    [agent, messageRegistry, confirmationService, commands]
+    [messageRegistry, confirmationService, commands]
   );
   
   const selectCommandSuggestion = useCallback(() => {

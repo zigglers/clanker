@@ -8,14 +8,12 @@ import {debug} from '../../utils/debug-logger';
 import {TokenCounter} from '../../utils/token-counter';
 
 interface UseMessageInputProps {
-    agent: GrokAgent;
     messageRegistry: typeof MessageRegistryType;
     executionRegistry: typeof ExecutionRegistryType;
     processingStartTime: MutableRefObject<number>;
 }
 
 export const useMessageInput = ({
-                                    agent,
                                     messageRegistry,
                                     executionRegistry,
                                     processingStartTime,
@@ -34,10 +32,17 @@ export const useMessageInput = ({
     const sendMessage = useCallback(
         async (content: string) => {
             debug.log('[useMessageInput] sendMessage called with:', content);
+            
+            // Get agent from store at the time of sending
+            const agent = store.agent;
             debug.log('[useMessageInput] agent exists:', !!agent);
             
             if (!content.trim() || !agent) {
-                debug.log('[useMessageInput] Skipping - no content or agent');
+                debug.log('[useMessageInput] Skipping - no content or agent', {
+                    hasContent: !!content.trim(),
+                    hasAgent: !!agent,
+                    content: content
+                });
                 return;
             }
 
@@ -48,9 +53,8 @@ export const useMessageInput = ({
             messageRegistry.addMessage(userMessage);
 
             // Count input tokens (just the user's message for now)
-            const tokenCounter = new TokenCounter(snap.model || 'grok-3-mini');
-            tokenCounter.countTokens(userMessage.content);
-            tokenCounter.dispose();
+            // Note: We could optimize this by reusing the agent's token counter
+            // but for now we'll skip token counting for the user message
 
             actions.setInputValue("");
             actions.setProcessing(true);
@@ -85,17 +89,9 @@ export const useMessageInput = ({
                     '- When dealing with complex codebases, summarize the structure and relationships\n' +
                     'The summarize tool helps maintain clarity and ensures important information is highlighted efficiently.';
 
-                // Count total input tokens including all context
-                const contextTokenCounter = new TokenCounter(snap.model || 'grok-3-mini');
-                // Count message tokens
-                const messageTokens = contextTokenCounter.countMessageTokens(messages as any);
-                // Count system prompt tokens if present
-                const systemPromptTokens = systemPrompt ? contextTokenCounter.countTokens(systemPrompt) : 0;
-                // Total input tokens
-                const totalInputTokens = messageTokens + systemPromptTokens;
-                actions.updateInputTokenCount(totalInputTokens);
-                contextTokenCounter.dispose();
-                debug.log(`[useMessageInput] Total input tokens: ${totalInputTokens} (messages: ${messageTokens}, system: ${systemPromptTokens})`);
+                // Skip token counting for now to improve performance
+                // This was creating a new TokenCounter on every message which is slow
+                debug.log(`[useMessageInput] Skipping token counting for performance`);
 
                 actions.setStreaming(true);
                 actions.setProcessing(false);
@@ -235,6 +231,7 @@ export const useMessageInput = ({
                                 break;
 
                             case 'done':
+                                debug.log('[useMessageInput] Received done chunk');
                                 if (currentAssistantMessage) {
                                     const messageId = currentAssistantMessage.id;
                                     
@@ -300,7 +297,7 @@ export const useMessageInput = ({
                 }
             }
         },
-        [agent, messageRegistry, executionRegistry, processingStartTime, snap.autoEditEnabled, snap.model]
+        [messageRegistry, executionRegistry, processingStartTime, snap.autoEditEnabled, snap.model]
     );
 
     return {

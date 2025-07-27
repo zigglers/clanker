@@ -1,4 +1,4 @@
-import {proxy} from 'valtio';
+import {proxy, ref} from 'valtio';
 import * as crypto from 'crypto';
 import {GrokAgent} from '../clanker/agent';
 import {MessageRegistryMessage} from '../registry/messages';
@@ -149,7 +149,8 @@ export const store = proxy<AppState>({
 export const actions = {
     // Agent actions
     setAgent(agent: GrokAgent) {
-        store.agent = agent;
+        // Use ref to prevent Valtio from wrapping the agent in a Proxy
+        store.agent = ref(agent);
         store.initError = null;
     },
 
@@ -168,7 +169,7 @@ export const actions = {
         try {
             const {GrokAgent} = await import('../clanker/agent');
             const agent = new GrokAgent(options);
-            store.agent = agent;
+            store.agent = ref(agent);
             store.isInitializing = false;
         } catch (error) {
             store.isInitializing = false;

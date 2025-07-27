@@ -26,11 +26,12 @@ export const ClankerLogo: React.FC<ClankerLogoProps> = ({agent, onComplete}) => 
     const colors = ['red', 'yellow', 'green', 'cyan', 'blue', 'magenta'];
 
     // Handle escape key
+    const isTTY = process.stdin.isTTY;
     useInput((input, key) => {
         if (key.escape) {
             setShouldSkip(true);
         }
-    });
+    }, { isActive: isTTY });
 
     // Color cycling effect
     useEffect(() => {

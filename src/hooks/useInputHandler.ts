@@ -4,7 +4,7 @@ import {useMessageInput} from './input/useMessageInput';
 import {useCommandInput} from './input/useCommandInput';
 import {useInputHistory} from './input/useInputHistory';
 import {useModelSelection} from './ui/useModelSelection';
-import {GrokAgent} from '../clanker/agent';
+import {useAgent} from './useAgent';
 import {messageRegistry} from '../registry/messages';
 import {executionRegistry} from '../registry/execution';
 import {ConfirmationOptions} from '../utils/confirmation-service';
@@ -12,7 +12,6 @@ import {MutableRefObject, useCallback} from "react";
 import {debug} from '../utils/debug-logger';
 
 interface UseInputHandlerProps {
-    agent: GrokAgent;
     messageRegistry: typeof messageRegistry;
     executionRegistry: typeof executionRegistry;
     processingStartTime: MutableRefObject<number>;
@@ -24,11 +23,11 @@ interface UseInputHandlerProps {
  * This is a thin wrapper that delegates to specialized hooks
  */
 export const useInputHandler = ({
-                                    agent,
                                     messageRegistry,
                                     executionRegistry,
                                     processingStartTime,
                                 }: UseInputHandlerProps) => {
+    const agent = useAgent();
     const snap = useSnapshot(store);
     const inputValue = snap.inputValue;
     // Use actions.setInputValue directly
@@ -36,7 +35,6 @@ export const useInputHandler = ({
 
     // Message handling
     const {sendMessage} = useMessageInput({
-        agent,
         messageRegistry,
         executionRegistry,
         processingStartTime,
@@ -52,7 +50,7 @@ export const useInputHandler = ({
         navigateCommandSuggestions,
         cancelCommandSuggestions,
         isCommand,
-    } = useCommandInput({agent, messageRegistry});
+    } = useCommandInput({messageRegistry});
 
     // History navigation
     const {
@@ -68,13 +66,10 @@ export const useInputHandler = ({
         selectModel,
         navigateModelSelection,
         cancelModelSelection,
-    } = useModelSelection({agent, messageRegistry});
+    } = useModelSelection({messageRegistry});
 
     // Main enter handler
     const handleEnter = useCallback(async () => {
-        debug.log('[useInputHandler] handleEnter called, inputValue:', inputValue);
-        debug.log('[useInputHandler] showCommandSuggestions:', showCommandSuggestions);
-        debug.log('[useInputHandler] showModelSelection:', showModelSelection);
         if (showCommandSuggestions) {
             selectCommandSuggestion();
         } else if (showModelSelection) {

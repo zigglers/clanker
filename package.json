@@ -25,9 +25,9 @@
   },
   "scripts": {
     "build": "tsup && node scripts/generate-tool-manifest.js",
-    "dev": "node --import tsx src/index.ts",
+    "dev": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON --import tsx src/index.ts",
     "test:registry": "tsx src/test-registry.ts",
-    "start": "node dist/index.js",
+    "start": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON dist/index.js",
     "start:registry": "node dist/index-registry.js",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "typecheck": "tsc --noEmit",

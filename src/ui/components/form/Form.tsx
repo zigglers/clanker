@@ -196,6 +196,7 @@ export const Form: React.FC<FormProps> = ({
     }, []);
 
     // Handle keyboard navigation with high priority
+    const isTTY = process.stdin.isTTY;
     useInput((input, key) => {
         // Handle Tab blocking
         if (key.tab && shouldBlockTab) {
@@ -260,7 +261,7 @@ export const Form: React.FC<FormProps> = ({
             submitForm();
             return;
         }
-    }, { isActive: true }); // High priority to intercept Tab before Ink's focus system
+    }, { isActive: isTTY }); // High priority to intercept Tab before Ink's focus system
 
     // Form submission
     const submitForm = useCallback(async () => {

@@ -24,6 +24,7 @@ export const Toggle: React.FC<ToggleProps> = ({
     });
 
     // Handle keyboard input
+    const isTTY = process.stdin.isTTY;
     useInput((input, key) => {
         if (!isFocused || disabled) return;
 
@@ -31,7 +32,7 @@ export const Toggle: React.FC<ToggleProps> = ({
         if (input === ' ' || key.return) {
             onChange?.(!value);
         }
-    });
+    }, { isActive: isTTY });
 
     const borderColor = isFocused ? 'cyan' : 'gray';
     const textColor = disabled ? 'gray' : (isFocused ? 'cyan' : 'white');

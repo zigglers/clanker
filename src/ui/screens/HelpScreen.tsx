@@ -3,11 +3,12 @@ import { Box, Text, useInput } from 'ink';
 import { actions } from '../../store';
 
 export const HelpScreen: React.FC = () => {
+    const isTTY = process.stdin.isTTY;
     useInput((input, key) => {
         if (key.return) {
             actions.popStage();
         }
-    });
+    }, { isActive: isTTY });
     
     return (
         <Box

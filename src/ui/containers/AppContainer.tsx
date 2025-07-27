@@ -115,6 +115,7 @@ export const AppContainer: React.FC<AppContainerProps> = ({ onRequestReload }) =
             await newAgent.waitForToolsToLoad();
 
             // Update the global store
+            console.error('[AppContainer] Setting agent in store:', newAgent);
             actions.setAgent(newAgent);
             actions.clearMessages();
 
@@ -163,12 +164,12 @@ export const AppContainer: React.FC<AppContainerProps> = ({ onRequestReload }) =
 
     // Show welcome screen
     if (showWelcome && agent) {
-        return <WelcomeScreen agent={agent} onComplete={handleWelcomeComplete} />;
+        return <WelcomeScreen onComplete={handleWelcomeComplete} />;
     }
 
     // Show main app with agent
     if (agent) {
-        return <StageRouter agent={agent} />;
+        return <StageRouter />;
     }
 
     // This shouldn't happen, but show settings as fallback

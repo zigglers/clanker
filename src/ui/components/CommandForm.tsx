@@ -27,11 +27,12 @@ export const CommandForm: React.FC<CommandFormProps> = ({ onCancel, onExecute })
     }));
     
     // Handle escape key
+    const isTTY = process.stdin.isTTY;
     useInput((input, key) => {
         if (key.escape) {
             onCancel();
         }
-    });
+    }, { isActive: isTTY });
     
     // Get command definition based on current selection
     const commandDef = formValues.command ? registry.get(formValues.command) : null;

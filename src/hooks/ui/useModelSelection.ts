@@ -1,15 +1,15 @@
 import {useCallback} from 'react';
 import {useSnapshot} from 'valtio';
 import {store, actions} from '../../store';
-import {GrokAgent} from '../../clanker/agent';
+import {useAgent} from '../useAgent';
 import {messageRegistry as MessageRegistryType} from '../../registry/messages';
 
 interface UseModelSelectionProps {
-    agent: GrokAgent;
     messageRegistry: typeof MessageRegistryType;
 }
 
-export const useModelSelection = ({agent, messageRegistry}: UseModelSelectionProps) => {
+export const useModelSelection = ({messageRegistry}: UseModelSelectionProps) => {
+    const agent = useAgent();
     const snap = useSnapshot(store);
     const showModelSelection = snap.showModelSelection;
     const selectedModelIndex = snap.selectedModelIndex;
@@ -26,7 +26,9 @@ export const useModelSelection = ({agent, messageRegistry}: UseModelSelectionPro
 
     const selectModel = useCallback(() => {
         const selectedModel = availableModels[selectedModelIndex];
-        agent.getClient().setModel(selectedModel);
+        if (agent) {
+            agent.getClient().setModel(selectedModel);
+        }
         actions.setModel(selectedModel);
 
         messageRegistry.addMessage({
