@@ -11,6 +11,7 @@ import {pathToFileURL} from 'url';
 import {ToolDefinition, ToolRegistry} from './types';
 import {debug} from '../utils/debug-logger';
 import {loadBuiltInToolsFromManifest} from './manifest-loader';
+import {createSharedStateAPI} from './shared-state';
 
 /**
  * Check if a module should be shared from the main clanker package
@@ -461,7 +462,8 @@ export class ToolLoader {
             try {
                 const context = {
                     registry: this.registry,
-                    workingDirectory: process.cwd()
+                    workingDirectory: process.cwd(),
+                    sharedState: createSharedStateAPI()
                 };
                 await tool.definition.cleanup(context);
                 debug.log(`[ToolLoader] Cleanup completed for ${toolId}`);

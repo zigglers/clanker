@@ -34,7 +34,7 @@ function loadApiKey(): string | undefined {
             const homeDir = os.homedir();
             // Try user-settings.json first (legacy), then settings.json
             let settingsFile = path.join(homeDir, ".clanker", "user-settings.json");
-            
+
             if (!fs.existsSync(settingsFile)) {
                 settingsFile = path.join(homeDir, ".clanker", "settings.json");
             }
@@ -110,14 +110,14 @@ async function processPromptHeadless(
         await agent.waitForToolsToLoad();
 
         // Process the prompt
-        const confirmationService = new ConfirmationService();
         const chunks: string[] = [];
-        
+
         // Process response with streaming
         const stream = await agent.chat(
             [{role: "user", content: prompt}],
             "",
             true
+            // eslint-disable-next-line
         ) as AsyncGenerator<any, void, unknown>;
 
         for await (const chunk of stream) {
@@ -149,8 +149,8 @@ async function processPromptHeadless(
     }
 }
 
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
+import {fileURLToPath} from 'url';
+import {dirname} from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -298,11 +298,11 @@ program
                 }
 
                 if (options.listAvailable !== undefined) {
-                    const page = typeof options.listAvailable === 'string' 
-                        ? parseInt(options.listAvailable, 10) 
+                    const page = typeof options.listAvailable === 'string'
+                        ? parseInt(options.listAvailable, 10)
                         : 1;
                     const pageSize = parseInt(options.pageSize, 10);
-                    await packageManager.listAvailable({ page, limit: pageSize });
+                    await packageManager.listAvailable({page, limit: pageSize});
                     return;
                 }
 
@@ -430,7 +430,6 @@ program
 
             // Handle Ctrl+C gracefully
             let exitCount = 0;
-            let exitTimer: NodeJS.Timeout | null = null;
             process.on('SIGINT', () => {
                 if (exitCount > 0) {
                     // Second Ctrl+C, exit immediately
@@ -450,7 +449,7 @@ program
 
             // Clear the screen before rendering
             console.clear();
-            
+
             // Always render AppContainer - it will handle showing settings if needed
             const {AppContainer} = await import("./ui/containers/AppContainer");
             const app = render(React.createElement(AppContainer, {}));

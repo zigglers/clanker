@@ -13,3 +13,4 @@ export * from './adapters';
 export * from './validation';
 export * from './loader';
 export * from './logger';
+export * from './shared-state';

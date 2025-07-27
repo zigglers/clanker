@@ -16,13 +16,24 @@ interface TodoItem {
     priority: 'high' | 'medium' | 'low';
 }
 
-// Tool state - maintains the current todo list
+// Legacy export for compatibility
 export let todoList: TodoItem[] = [];
+
+/**
+ * Get/set todo list from shared state
+ */
+function getTodoList(context: any): TodoItem[] {
+    return context.sharedState?.get<TodoItem[]>('todoList') || [];
+}
+
+function setTodoList(context: any, todos: TodoItem[]): void {
+    context.sharedState?.set('todoList', todos);
+}
 
 /**
  * Generate todo summary
  */
-function generateTodoSummary(): string {
+function generateTodoSummary(todoList: TodoItem[]): string {
     if (todoList.length === 0) {
         return 'No todos';
     }
@@ -316,22 +327,25 @@ const createTodoListTool = createTool()
 
         context.logger?.debug(`Creating todo list with ${todos.length} items`);
 
-        // Replace the entire todo list
-        todoList = todos.map((todo) => ({
+        // Replace the entire todo list in shared state
+        const newTodoList = todos.map((todo) => ({
             id: todo.id,
             content: todo.content,
             status: todo.status,
             priority: todo.priority
         }));
+        
+        setTodoList(context, newTodoList);
 
         // Generate summary
-        const summary = generateTodoSummary();
+        const currentTodoList = getTodoList(context);
+        const summary = generateTodoSummary(currentTodoList);
 
-        context.logger?.info(`Created todo list with ${todoList.length} items`);
+        context.logger?.info(`Created todo list with ${currentTodoList.length} items`);
         return {
             success: true,
-            output: `Created todo list with ${todoList.length} items:\n\n${summary}`,
-            data: {todos: todoList}
+            output: `Created todo list with ${currentTodoList.length} items:\n\n${summary}`,
+            data: {todos: currentTodoList}
         };
     })
     .build();

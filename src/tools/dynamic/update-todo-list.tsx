@@ -7,7 +7,7 @@ import {Box, Text} from 'ink';
 import {createTool, ToolCategory, ExtractToolArgs} from '../../registry';
 import {ToolResult} from '../../types';
 import {ToolOutput, CompactOutput} from '../../ui/components/tool-output';
-import {todoList} from './create-todo-list';
+// Remove import since we'll use shared state
 
 // Todo item interface
 interface TodoItem {
@@ -18,9 +18,20 @@ interface TodoItem {
 }
 
 /**
+ * Get/set todo list from shared state
+ */
+function getTodoList(context: any): TodoItem[] {
+    return context.sharedState?.get<TodoItem[]>('todoList') || [];
+}
+
+function setTodoList(context: any, todos: TodoItem[]): void {
+    context.sharedState?.set('todoList', todos);
+}
+
+/**
  * Generate todo summary
  */
-function generateTodoSummary(): string {
+function generateTodoSummary(todoList: TodoItem[]): string {
     if (todoList.length === 0) {
         return 'No todos';
     }
@@ -318,11 +329,13 @@ const updateTodoListTool = createTool()
 
         context.logger?.debug(`Updating ${updates.length} todo items`);
 
+        // Get current todo list from shared state
+        const currentTodoList = getTodoList(context);
         const updatedIds: string[] = [];
         const notFoundIds: string[] = [];
 
         for (const update of updates) {
-            const todoIndex = todoList.findIndex(todo => todo.id === update.id);
+            const todoIndex = currentTodoList.findIndex(todo => todo.id === update.id);
 
             if (todoIndex === -1) {
                 context.logger?.warn(`Todo not found: ${update.id}`);
@@ -332,13 +345,13 @@ const updateTodoListTool = createTool()
 
             // Apply updates
             if (update.status) {
-                todoList[todoIndex].status = update.status;
+                currentTodoList[todoIndex].status = update.status;
             }
             if (update.priority) {
-                todoList[todoIndex].priority = update.priority;
+                currentTodoList[todoIndex].priority = update.priority;
             }
             if (update.content) {
-                todoList[todoIndex].content = update.content;
+                currentTodoList[todoIndex].content = update.content;
             }
 
             updatedIds.push(update.id);
@@ -360,16 +373,19 @@ const updateTodoListTool = createTool()
             messages.push('No updates performed');
         }
 
+        // Save updated list back to shared state
+        setTodoList(context, currentTodoList);
+        
         // Add summary
         messages.push('');
         messages.push('Current todo list:');
-        messages.push(generateTodoSummary());
+        messages.push(generateTodoSummary(currentTodoList));
 
         context.logger?.info(`Todo update completed: ${updatedIds.length} updated, ${notFoundIds.length} not found`);
         return {
             success: notFoundIds.length === 0,
             output: messages.join('\n'),
-            data: {todos: todoList, updated: updatedIds, notFound: notFoundIds}
+            data: {todos: currentTodoList, updated: updatedIds, notFound: notFoundIds}
         };
     })
     .build();

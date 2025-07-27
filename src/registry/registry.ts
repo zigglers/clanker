@@ -18,6 +18,7 @@ import {validateArguments} from './validation';
 import {createComposedTool} from './composition';
 import {ConfirmationService} from '../utils/confirmation-service';
 import {createToolLogger} from './logger';
+import {createSharedStateAPI} from './shared-state';
 
 /**
  * Main tool registry implementation
@@ -31,7 +32,8 @@ export class ToolRegistryImpl implements ToolRegistry {
             registry: this,
             workingDirectory,
             confirmationService: ConfirmationService.getInstance(),
-            state: new Map()
+            state: new Map(),
+            sharedState: createSharedStateAPI()
         };
     }
 

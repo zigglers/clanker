@@ -4,6 +4,7 @@
 
 import {ToolResult} from '../types';
 import React from 'react';
+import {SharedStateAPI} from './shared-state';
 
 // ============================================================================
 // Core Tool Types
@@ -87,6 +88,7 @@ export interface ToolContext {
     confirmationService?: unknown;
     logger?: ToolLogger;
     state?: Map<string, unknown>;
+    sharedState: SharedStateAPI;
 }
 
 /**

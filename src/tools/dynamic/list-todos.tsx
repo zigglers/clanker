@@ -7,7 +7,7 @@ import {Box, Text} from 'ink';
 import {createTool, ToolCategory, ExtractToolArgs} from '../../registry';
 import {ToolResult} from '../../types';
 import {ToolOutput, CompactOutput} from '../../ui/components/tool-output';
-import {todoList} from './create-todo-list';
+// Remove import since we'll use shared state
 
 // Todo item interface
 interface TodoItem {
@@ -18,9 +18,16 @@ interface TodoItem {
 }
 
 /**
+ * Get todo list from shared state
+ */
+function getTodoList(context: any): TodoItem[] {
+    return context.sharedState?.get<TodoItem[]>('todoList') || [];
+}
+
+/**
  * Generate todo summary
  */
-function generateTodoSummary(): string {
+function generateTodoSummary(todoList: TodoItem[]): string {
     if (todoList.length === 0) {
         return 'No todos';
     }
@@ -241,9 +248,12 @@ const listTodosTools = createTool()
     
     // Execute
     .execute(async (args, context) => {
-        context.logger?.debug(`Listing ${todoList.length} todo items`);
+        // Get current todo list from shared state
+        const currentTodoList = getTodoList(context);
         
-        if (todoList.length === 0) {
+        context.logger?.debug(`Listing ${currentTodoList.length} todo items`);
+        
+        if (currentTodoList.length === 0) {
             return {
                 success: true,
                 output: "No todos in the list",
@@ -252,13 +262,13 @@ const listTodosTools = createTool()
         }
         
         // Generate summary
-        const summary = generateTodoSummary();
+        const summary = generateTodoSummary(currentTodoList);
         
-        context.logger?.info(`Listed ${todoList.length} todo items`);
+        context.logger?.info(`Listed ${currentTodoList.length} todo items`);
         return {
             success: true,
             output: summary,
-            data: {todos: todoList}
+            data: {todos: currentTodoList}
         };
     })
     .build();
