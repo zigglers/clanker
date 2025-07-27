@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import type {ChatCompletionMessageParam, ChatCompletionChunk} from "openai/resources/chat";
+import { debug } from '../utils/debug-logger';
 
 export type GrokMessage = ChatCompletionMessageParam;
 
@@ -108,6 +109,7 @@ export class GrokClient {
         model?: string,
         searchOptions?: SearchOptions
     ): AsyncGenerator<ChatCompletionChunk, void, unknown> {
+        debug.log('[GrokClient] chatStream called with', messages.length, 'messages');
         try {
             const requestPayload: Record<string, unknown> = {
                 model: model || this.currentModel,
@@ -127,19 +129,26 @@ export class GrokClient {
                 (requestPayload as { search_parameters?: unknown }).search_parameters = searchOptions.search_parameters;
             }
 
+            // Add stream: true to the payload
+            requestPayload.stream = true;
+            
             // Log timing for debugging
+            debug.log('[GrokClient] Creating stream with model:', requestPayload.model);
             const stream = await this.client.chat.completions.create(
                 requestPayload as unknown as Parameters<typeof this.client.chat.completions.create>[0]
             );
+            debug.log('[GrokClient] Stream created');
 
             let firstChunk = true;
 
             for await (const chunk of stream as AsyncIterable<ChatCompletionChunk>) {
                 if (firstChunk) {
+                    debug.log('[GrokClient] First chunk received');
                     firstChunk = false;
                 }
                 yield chunk;
             }
+            debug.log('[GrokClient] Stream completed');
         } catch (error) {
             throw new Error(`Grok API error: ${error instanceof Error ? error.message : String(error)}`);
         }

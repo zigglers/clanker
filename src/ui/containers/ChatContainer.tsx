@@ -16,6 +16,7 @@ import {useProcessingTimer} from "../../hooks/useProcessingTimer";
 import {useRegistries} from "../../hooks/useRegistries";
 import {store, actions} from "../../store";
 import {StageType} from "../stage/types";
+import {debug} from "../../utils/debug-logger";
 
 interface ChatContainerProps {
     agent: GrokAgent;
@@ -27,6 +28,7 @@ interface ChatContainerProps {
  */
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function ChatContainer({agent}: ChatContainerProps) {
+    debug.log('[ChatContainer] Rendering with agent:', !!agent);
     // Use Valtio's useSnapshot as intended
     const snap = useSnapshot(store);
 
@@ -74,6 +76,7 @@ export function ChatContainer({agent}: ChatContainerProps) {
 
     // Handle keyboard input directly here
     useInput((inputChar: string, key: { [key: string]: boolean }) => {
+        debug.log('[ChatContainer] Key pressed:', { inputChar: inputChar.charCodeAt(0), key });
         // Skip all input if confirmation is active
         if (snap.confirmationOptions) return;
 

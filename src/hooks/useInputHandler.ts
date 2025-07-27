@@ -9,6 +9,7 @@ import {messageRegistry} from '../registry/messages';
 import {executionRegistry} from '../registry/execution';
 import {ConfirmationOptions} from '../utils/confirmation-service';
 import {MutableRefObject, useCallback} from "react";
+import {debug} from '../utils/debug-logger';
 
 interface UseInputHandlerProps {
     agent: GrokAgent;
@@ -71,6 +72,9 @@ export const useInputHandler = ({
 
     // Main enter handler
     const handleEnter = useCallback(async () => {
+        debug.log('[useInputHandler] handleEnter called, inputValue:', inputValue);
+        debug.log('[useInputHandler] showCommandSuggestions:', showCommandSuggestions);
+        debug.log('[useInputHandler] showModelSelection:', showModelSelection);
         if (showCommandSuggestions) {
             selectCommandSuggestion();
         } else if (showModelSelection) {

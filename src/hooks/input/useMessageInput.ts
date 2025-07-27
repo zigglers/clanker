@@ -101,7 +101,9 @@ export const useMessageInput = ({
                 actions.setProcessing(false);
                 debug.log('[useMessageInput] Starting to stream response...');
 
+                debug.log('[useMessageInput] Calling agent.chat with', messages.length, 'messages');
                 const response = await agent.chat(messages, systemPrompt || undefined, true);
+                debug.log('[useMessageInput] Got response type:', typeof response);
 
                 let hasToolCalls = false;
 

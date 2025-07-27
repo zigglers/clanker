@@ -125,6 +125,7 @@ export class GrokAgent extends EventEmitter {
         messages: GrokMessage[],
         tools: GrokTool[]
     ): AsyncGenerator<StreamingChunk, void, unknown> {
+        debug.log('[GrokAgent] streamChat called');
         let rounds = 0;
         let currentMessages = [...messages];
         let totalTokens = this.tokenCounter.countMessageTokens(currentMessages as never); // Start with initial message tokens
@@ -143,7 +144,9 @@ export class GrokAgent extends EventEmitter {
             let lastFinishReason: string | null = null;
 
             // Process the stream
+            debug.log('[GrokAgent] Starting to process stream');
             for await (const chunk of stream) {
+                debug.log('[GrokAgent] Processing chunk');
                 // Skip chunks without choices or delta
                 if (!chunk.choices || chunk.choices.length === 0 || !chunk.choices[0].delta) {
                     continue;
