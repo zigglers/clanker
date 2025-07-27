@@ -62,6 +62,7 @@ export class RegistryClient {
         // Fallback to registry.json if no releases
         if (!registry) {
           const url = `${registryUrl}/registry.json`;
+          debug.log(`[Registry] Fetching registry from ${url}`);
           const response = await fetch(url);
           
           if (!response.ok) {
@@ -69,6 +70,7 @@ export class RegistryClient {
           }
           
           registry = await response.json() as ToolRegistry;
+          debug.log(`[Registry] Fetched ${registry.tools?.length || 0} tools from registry.json`);
         }
         
         // Cache the result
@@ -120,7 +122,48 @@ export class RegistryClient {
     
     if (toolInfo) {
       debug.log(`[Registry] Found tool in registry:`, toolInfo);
-      // Convert registry format to metadata format
+      // Try to fetch the actual metadata.json for more details
+      try {
+        const registryUrl = this.getRegistryUrl(toolInfo.repository || '');
+        const metadataUrl = `${this.registryUrl}/tools/${tool.org}/${tool.name}/metadata.json`;
+        debug.log(`[Registry] Fetching detailed metadata from ${metadataUrl}`);
+        
+        const metadataResponse = await fetch(metadataUrl);
+        if (metadataResponse.ok) {
+          const detailedMetadata = await metadataResponse.json();
+          debug.log(`[Registry] Got detailed metadata:`, detailedMetadata);
+          
+          // Convert to expected format
+          const metadata: ToolPackageMetadata = {
+            id: detailedMetadata.id || `${tool.org}/${tool.name}`,
+            name: `${tool.org}-clanker-tool-${tool.name}`,
+            description: detailedMetadata.description || toolInfo.description,
+            author: detailedMetadata.publisher || toolInfo.author || 'Unknown',
+            homepage: detailedMetadata.repository || toolInfo.homepage || '',
+            repository: detailedMetadata.repository || toolInfo.repository || '',
+            latest: detailedMetadata.latest || toolInfo.latest || '1.0.0',
+            versions: {},
+            tags: detailedMetadata.tags || toolInfo.keywords || []
+          };
+          
+          // Convert versions format
+          if (detailedMetadata.versions) {
+            for (const [version, versionInfo] of Object.entries(detailedMetadata.versions)) {
+              metadata.versions[version] = {
+                date: (versionInfo as any).date || new Date().toISOString(),
+                minClankerVersion: (versionInfo as any).minClankerVersion || '0.1.0',
+                sha256: (versionInfo as any).sha256 || 'example-hash-will-be-computed'
+              };
+            }
+          }
+          
+          return metadata;
+        }
+      } catch (error) {
+        debug.log(`[Registry] Failed to fetch detailed metadata, using registry info:`, error);
+      }
+      
+      // Fallback: Convert registry format to metadata format
       const version = toolInfo.version || toolInfo.latest || '1.0.0';
       debug.log(`[Registry] Converting toolInfo to metadata. Version: ${version}`);
       const metadata = {
@@ -209,14 +252,23 @@ export class RegistryClient {
           }
         }
         
-        // Fallback to raw content
+        // Fallback to raw content with new directory structure
         const registryUrl = this.getRegistryUrl(repo.url);
         const url = `${registryUrl}/tools/${tool.org}/${tool.name}/${version}/index.js`;
         
         debug.log(`[Registry] Downloading ${tool.org}/${tool.name}@${version} from ${repo.name} (raw)`);
+        debug.log(`[Registry] URL: ${url}`);
         
         const response = await fetch(url);
         if (!response.ok) {
+          // Try without the /tools prefix for backward compatibility
+          const legacyUrl = `${registryUrl}/${tool.org}/${tool.name}/${version}/index.js`;
+          debug.log(`[Registry] Trying legacy URL: ${legacyUrl}`);
+          const legacyResponse = await fetch(legacyUrl);
+          if (legacyResponse.ok) {
+            const buffer = await legacyResponse.arrayBuffer();
+            return Buffer.from(buffer);
+          }
           throw new Error(`Not found in ${repo.name}: ${response.statusText}`);
         }
         
@@ -297,13 +349,17 @@ export class RegistryClient {
    */
   async searchTools(query: string): Promise<ToolRegistry['tools']> {
     const registry = await this.fetchRegistry();
+    debug.log(`[Registry] Searching for '${query}' in ${registry.tools.length} tools`);
     
     const lowerQuery = query.toLowerCase();
-    return registry.tools.filter(tool => 
+    const results = registry.tools.filter(tool => 
       tool.name.toLowerCase().includes(lowerQuery) ||
       tool.description.toLowerCase().includes(lowerQuery) ||
       tool.org.toLowerCase().includes(lowerQuery)
     );
+    
+    debug.log(`[Registry] Found ${results.length} matching tools`);
+    return results;
   }
 
   /**
@@ -434,11 +490,14 @@ export class RegistryClient {
       (this as any).currentRelease = release;
       
       // Transform to our format
-      return {
+      debug.log(`[Registry] Tools index content:`, toolsIndex);
+      const registry = {
         version: toolsIndex.version || '1.0.0',
         tools: toolsIndex.tools || [],
-        updated: toolsIndex.timestamp || new Date().toISOString()
+        updated: toolsIndex.timestamp || toolsIndex.updated || new Date().toISOString()
       };
+      debug.log(`[Registry] Transformed registry has ${registry.tools.length} tools`);
+      return registry;
       
     } catch (error) {
       debug.error(`[Registry] Error fetching from releases:`, error);
