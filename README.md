@@ -11,10 +11,14 @@
   <h3>AI agents that actually <em>do</em> things</h3>
   <p>Not just suggestions—real actions, real changes, real time.</p>
 </div>
+Want to use it in ** cursor ** (or any ide of your choosing)? No problem!
 
-## Demo
+https://github.com/user-attachments/assets/6f0bce3f-13dd-483d-ba99-4017f953f9a4
+
+## Standard tty/(kitty) terminal 
 
 https://github.com/user-attachments/assets/2465c9b7-8f13-4a39-9486-f7ca032dadc4
+
 
 ## Quick Start
 
