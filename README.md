@@ -1,17 +1,17 @@
-# Clanker
-> Demistifying the agentic workflow
-
-<div align="center">
+<h1>Clanker</h1>
   <p>
     <img alt="npm version" src="https://img.shields.io/npm/v/@ziggler/clanker?style=flat-square&color=00D9FF">
     <img alt="license" src="https://img.shields.io/badge/license-MIT-blue?style=flat-square">
     <img alt="node version" src="https://img.shields.io/node/v/@ziggler/clanker?style=flat-square&color=43B02A">
     <img alt="downloads" src="https://img.shields.io/npm/dm/@ziggler/clanker?style=flat-square&color=FF6B6B">
   </p>
+<div align="right">
+
   <h3>AI agents that actually <em>do</em> things</h3>
   <p>Not just suggestions—real actions, real changes, real time.</p>
 </div>
-Want to use it in ** cursor ** (or any ide of your choosing)? No problem!
+
+> Want to use it in __**cursor**__? No problem!
 
 https://github.com/user-attachments/assets/6f0bce3f-13dd-483d-ba99-4017f953f9a4
 
