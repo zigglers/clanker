@@ -192,6 +192,64 @@ export class ClankerPackageManager {
   async update(toolSpec: string): Promise<void> {
     return this.installer.update(toolSpec);
   }
+  
+  /**
+   * Update all installed tools
+   */
+  async updateAll(): Promise<{updated: number, alreadyLatest: number, failed: number}> {
+    const installedTools = await this.installer.listInstalled();
+    
+    if (installedTools.length === 0) {
+      console.log("ℹ️  No tools installed");
+      return {updated: 0, alreadyLatest: 0, failed: 0};
+    }
+    
+    let updatedCount = 0;
+    let failedCount = 0;
+    let alreadyLatestCount = 0;
+    
+    for (const installedTool of installedTools) {
+      try {
+        const toolId = `${installedTool.org}/${installedTool.name}`;
+        console.log(`\n📦 Checking ${toolId}...`);
+        
+        // Get latest version from registry
+        const registryData = await this.registry.fetchRegistry();
+        const latestTool = registryData.tools.find(t => 
+          t.org === installedTool.org && t.name === installedTool.name
+        );
+        
+        if (!latestTool) {
+          console.log(`⚠️  ${toolId} not found in registry`);
+          failedCount++;
+          continue;
+        }
+        
+        if (latestTool.version === installedTool.version) {
+          console.log(`✓ ${toolId} is already at latest version (${installedTool.version})`);
+          alreadyLatestCount++;
+        } else {
+          console.log(`📥 Updating ${toolId} from ${installedTool.version} to ${latestTool.version}...`);
+          await this.update(toolId);
+          console.log(`✅ Successfully updated ${toolId} to ${latestTool.version}`);
+          updatedCount++;
+        }
+      } catch (error) {
+        console.error(`❌ Failed to update ${installedTool.org}/${installedTool.name}: ${error instanceof Error ? error.message : String(error)}`);
+        failedCount++;
+      }
+    }
+    
+    console.log(`\n📊 Update Summary:`);
+    console.log(`   ${updatedCount} tool(s) updated`);
+    console.log(`   ${alreadyLatestCount} tool(s) already at latest version`);
+    if (failedCount > 0) {
+      console.log(`   ${failedCount} tool(s) failed to update`);
+    }
+    console.log(`\n✅ Update check complete`);
+    
+    return {updated: updatedCount, alreadyLatest: alreadyLatestCount, failed: failedCount};
+  }
 
   /**
    * Clear registry cache

@@ -576,65 +576,7 @@ program
             } else {
                 // Update all installed tools
                 console.log("🔄 Updating all installed tools...");
-                
-                // Get list of installed tools
-                const {ToolInstaller} = await import('./package-manager/installer');
-                const installer = new ToolInstaller();
-                const installedTools = await installer.listInstalled();
-                
-                if (installedTools.length === 0) {
-                    console.log("ℹ️  No tools installed");
-                    return;
-                }
-                
-                let updatedCount = 0;
-                let failedCount = 0;
-                let alreadyLatestCount = 0;
-                
-                for (const installedTool of installedTools) {
-                    try {
-                        const toolId = `${installedTool.org}/${installedTool.name}`;
-                        console.log(`\n📦 Checking ${toolId}...`);
-                        
-                        // Try to update - it will check if update is needed
-                        const currentVersion = installedTool.version;
-                        
-                        // Get the registry to check latest version
-                        const {RegistryClient} = await import('./package-manager/registry');
-                        const registry = new RegistryClient();
-                        const registryData = await registry.fetchRegistry();
-                        const latestTool = registryData.tools.find(t => 
-                            t.org === installedTool.org && t.name === installedTool.name
-                        );
-                        
-                        if (!latestTool) {
-                            console.log(`⚠️  ${toolId} not found in registry`);
-                            failedCount++;
-                            continue;
-                        }
-                        
-                        if (latestTool.version === currentVersion) {
-                            console.log(`✓ ${toolId} is already at latest version (${currentVersion})`);
-                            alreadyLatestCount++;
-                        } else {
-                            console.log(`📥 Updating ${toolId} from ${currentVersion} to ${latestTool.version}...`);
-                            await packageManager.update(toolId);
-                            console.log(`✅ Successfully updated ${toolId} to ${latestTool.version}`);
-                            updatedCount++;
-                        }
-                    } catch (error) {
-                        console.error(`❌ Failed to update ${installedTool.org}/${installedTool.name}: ${error instanceof Error ? error.message : String(error)}`);
-                        failedCount++;
-                    }
-                }
-                
-                console.log(`\n📊 Update Summary:`);
-                console.log(`   ${updatedCount} tool(s) updated`);
-                console.log(`   ${alreadyLatestCount} tool(s) already at latest version`);
-                if (failedCount > 0) {
-                    console.log(`   ${failedCount} tool(s) failed to update`);
-                }
-                console.log(`\n✅ Update check complete`);
+                await packageManager.updateAll();
             }
         } catch (error) {
             console.error("❌ Error:", error instanceof Error ? error.message : String(error));
