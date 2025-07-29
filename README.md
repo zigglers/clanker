@@ -39,15 +39,18 @@ clanker
 
 Clanker will guide you through API key setup on first run.
 
-## What's New in v0.3.0
+## What's New
 
+### v0.3.1
+- 🔄 **Update All Tools**: Update all installed tools at once with `clanker --update`
+- 🚀 **Self-Update**: Keep clanker up-to-date with `clanker -U` or `clanker upgrade`
+
+### v0.3.0
 - 🪝 **Hook System**: Comprehensive event-driven architecture for extending Clanker
 - 💾 **Session Management**: Persistent chat sessions with auto-save and history
 - 📦 **Local Tool Installation**: Install tools directly from local directories with `--local`
 - 🔧 **Enhanced Tool Context**: Tools can now execute other tools and access the hook system
 - 🔗 **Tool Dependencies**: Tools can declare dependencies that are automatically installed
-- 🔄 **Update All Tools**: Update all installed tools at once with `clanker --update`
-- 🚀 **Self-Update**: Keep clanker up-to-date with `clanker -U` or `clanker upgrade`
 
 ## What Can It Do?
 

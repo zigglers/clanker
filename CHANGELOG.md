@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2025-07-29
+
+### Added
+- **Update All Tools**: New `--update` command with no parameters
+  - Updates all installed tools to their latest versions
+  - Shows detailed progress and summary
+  - Identifies tools that are already up-to-date
+
+- **Self-Update Command**: New `--upgrade` / `-U` flag and `upgrade` command
+  - Updates clanker itself to the latest version from npm
+  - Checks current vs latest version before updating
+  - Provides manual update instructions on failure
+
 ## [0.3.0] - 2025-07-29
 
 ### Added
@@ -37,16 +50,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Access to tool registry via `context.tools` 
   - Programmatic tool execution from within tools
   - Settings management API
-
-- **Update All Tools**: New `--update` command with no parameters
-  - Updates all installed tools to their latest versions
-  - Shows detailed progress and summary
-  - Identifies tools that are already up-to-date
-
-- **Self-Update Command**: New `--upgrade` / `-U` flag and `upgrade` command
-  - Updates clanker itself to the latest version from npm
-  - Checks current vs latest version before updating
-  - Provides manual update instructions on failure
 
 ### Changed
 - Tools can now declare dependencies in package.json under `clanker.dependencies`
