@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.3] - 2025-07-29
+
+### Added
+- **Hook System Improvements**: 
+  - Hook `register()` now returns the hook ID for manual management
+  - Auto-generate hook IDs if not provided
+  - New `persistHook()` method for saving hooks to settings (module paths only)
+  - Made hook ID optional in `HookRegistrationOptions`
+
+### Fixed
+- Export `ToolContext` and `ToolArguments` types properly for tool developers
+
 ## [0.3.2] - 2025-07-29
 
 ### Fixed
