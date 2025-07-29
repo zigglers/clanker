@@ -108,10 +108,15 @@ export class HookManager implements HookAPI {
     /**
      * Register a hook dynamically
      */
-    register(options: HookRegistrationOptions): void {
-        this.hooks.set(options.id, options);
-        this.enabledHooks.add(options.id);
-        debug.log(`[HookManager] Registered hook: ${options.id} for event ${options.event}`);
+    register(options: HookRegistrationOptions): string {
+        // Generate ID if not provided
+        const hookId = options.id || `hook_${options.event}_${uuidv4().substring(0, 8)}`;
+        const optionsWithId = { ...options, id: hookId };
+        
+        this.hooks.set(hookId, optionsWithId);
+        this.enabledHooks.add(hookId);
+        debug.log(`[HookManager] Registered hook: ${hookId} for event ${options.event}`);
+        return hookId;
     }
 
     /**
@@ -500,5 +505,66 @@ export class HookManager implements HookAPI {
 
     isEnabled(id: string): boolean {
         return this.enabledHooks.has(id);
+    }
+
+    /**
+     * Persist a hook to settings so it survives across sessions
+     */
+    async persistHook(id: string): Promise<void> {
+        const hook = this.hooks.get(id);
+        if (!hook) {
+            throw new Error(`Hook ${id} not found`);
+        }
+
+        // Only persist function hooks with string handlers (module paths)
+        if (typeof hook.handler !== 'string') {
+            throw new Error('Only hooks with module paths can be persisted');
+        }
+
+        // Create a hook configuration for settings
+        const hookConfig: FunctionHookConfig = {
+            type: HookType.Function,
+            function: hook.handler,
+            timeout: hook.timeout
+        };
+
+        // Create a matcher for this hook
+        const matcher: HookMatcher = {
+            matcher: typeof hook.matcher === 'string' ? hook.matcher : (hook.matcher?.toString() || '*'),
+            hooks: [hookConfig]
+        };
+
+        // Load current settings
+        const userSettingsPath = path.join(os.homedir(), '.clanker', 'settings.json');
+        let settings: any = {};
+        
+        try {
+            if (fs.existsSync(userSettingsPath)) {
+                settings = JSON.parse(fs.readFileSync(userSettingsPath, 'utf-8'));
+            }
+        } catch (error) {
+            debug.error('[HookManager] Failed to load settings for persistence:', error);
+        }
+
+        // Initialize hooks section if needed
+        if (!settings.hooks) {
+            settings.hooks = {};
+        }
+        if (!settings.hooks[hook.event]) {
+            settings.hooks[hook.event] = [];
+        }
+
+        // Add the hook configuration
+        settings.hooks[hook.event].push(matcher);
+
+        // Save settings
+        try {
+            await fs.promises.mkdir(path.dirname(userSettingsPath), { recursive: true });
+            await fs.promises.writeFile(userSettingsPath, JSON.stringify(settings, null, 2));
+            debug.log(`[HookManager] Persisted hook ${id} to settings`);
+        } catch (error) {
+            debug.error('[HookManager] Failed to persist hook:', error);
+            throw new Error(`Failed to persist hook: ${error instanceof Error ? error.message : String(error)}`);
+        }
     }
 }

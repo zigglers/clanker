@@ -370,7 +370,7 @@ export interface HookContext {
  */
 export interface HookRegistrationOptions {
     // Hook metadata
-    id: string;
+    id?: string; // Optional - will be auto-generated if not provided
     name: string;
     description?: string;
     version?: string;
@@ -400,7 +400,7 @@ export interface HookRegistrationOptions {
  * Dynamic hook API for tools to register hooks at runtime
  */
 export interface HookAPI {
-    register(options: HookRegistrationOptions): void;
+    register(options: HookRegistrationOptions): string; // Returns the hook ID
     unregister(id: string): void;
     
     // Execute hooks programmatically
@@ -414,4 +414,7 @@ export interface HookAPI {
     enable(id: string): void;
     disable(id: string): void;
     isEnabled(id: string): boolean;
+    
+    // Persist hook to settings (for hooks that should survive across sessions)
+    persistHook(id: string): Promise<void>;
 }
