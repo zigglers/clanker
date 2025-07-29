@@ -5,6 +5,50 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2025-07-29
+
+### Added
+- **Hook System**: Comprehensive event-driven hook system for extending Clanker functionality
+  - Support for command, function, and tool hooks
+  - Pre/Post tool execution hooks
+  - Message lifecycle hooks
+  - Session management hooks
+  - AI-interpretable structured data in hook outputs
+  - Dynamic hook registration API for tools
+  - Hook configuration via settings.json files
+  - Tool chaining and context modification capabilities
+  
+- **Session Management**: Full session persistence and lifecycle management
+  - Automatic session saving and loading
+  - Message history tracking
+  - Tool execution history
+  - Session-specific context and metadata
+  - Auto-save functionality with configurable intervals
+  - Session event system
+  - JSONL transcript export
+
+- **Local Tool Installation**: `--local` flag for installing tools from local directories
+  - `clanker install --local /path/to/tool` for development workflow
+  - Automatic dependency resolution for local tools
+  - Version management for local installations
+
+- **Tool Context Enhancements**: Extended tool context with new capabilities
+  - Access to hook manager via `context.hooks`
+  - Access to tool registry via `context.tools` 
+  - Programmatic tool execution from within tools
+  - Settings management API
+
+### Changed
+- Tools can now declare dependencies in package.json under `clanker.dependencies`
+- Tool initialization now supports async operations via agent.initialize()
+- Improved TypeScript types throughout the codebase
+- Enhanced error handling and debugging output
+
+### Fixed
+- Session message type compatibility with GrokMessage interface
+- Async initialization race conditions in agent startup
+- Tool dependency installation handling
+
 ## [0.2.81] - 2025-07-27
 
 ### Fixed

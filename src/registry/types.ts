@@ -89,6 +89,8 @@ export interface ToolContext {
     logger?: ToolLogger;
     state?: Map<string, unknown>;
     sharedState: SharedStateAPI;
+    hooks?: any; // Hook API for tools to register hooks
+    tools?: Record<string, ToolDefinition>; // Available tools for checking dependencies
 }
 
 /**
@@ -210,6 +212,8 @@ export interface ToolRegistry {
 
     // Validation
     validateArguments(toolId: string, args: ToolArguments): ValidationResult;
+    // Hook integration
+    setHookManager?(hookManager: any): void;
 }
 
 /**

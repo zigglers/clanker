@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '[HOOK] Bash command intercepted: ${TOOL_NAME}' >> /tmp/clanker-hooks-test.log"
+          }
+        ]
+      }
+    ],
+    "PostMessage": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '[HOOK] Message posted: ${ROLE}' >> /tmp/clanker-hooks-test.log"
+          }
+        ]
+      }
+    ]
+  }
+}

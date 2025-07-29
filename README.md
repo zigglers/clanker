@@ -39,12 +39,13 @@ clanker
 
 Clanker will guide you through API key setup on first run.
 
-## What's New in v0.2.0
+## What's New in v0.3.0
 
-- 🚀 **Improved Performance**: First message no longer has 40-second delay
-- 🐛 **Fixed Chat Issues**: Messages now display correctly in the UI
-- 🎨 **Better Error Handling**: System messages render properly
-- 🔧 **Cleaner Output**: Suppressed module warning messages
+- 🪝 **Hook System**: Comprehensive event-driven architecture for extending Clanker
+- 💾 **Session Management**: Persistent chat sessions with auto-save and history
+- 📦 **Local Tool Installation**: Install tools directly from local directories with `--local`
+- 🔧 **Enhanced Tool Context**: Tools can now execute other tools and access the hook system
+- 🔗 **Tool Dependencies**: Tools can declare dependencies that are automatically installed
 
 ## What Can It Do?
 
@@ -180,6 +181,93 @@ npm run publish
 ```
 
 Visit the [Tool Development Guide](https://github.com/zigglers/clanker/wiki/Tool-Development) for detailed instructions.
+
+## Hook System
+
+Clanker v0.3.0 introduces a powerful hook system that allows tools and users to extend functionality through event-driven programming.
+
+### Hook Events
+
+- **PreToolUse**: Fired before any tool execution (can block or modify)
+- **PostToolUse**: Fired after tool execution (can process results)
+- **PreMessage**: Fired before messages are added to the conversation
+- **PostMessage**: Fired after messages are processed
+- **SessionStart**: Fired when a session begins
+- **UserPromptSubmit**: Fired when user submits a prompt
+
+### Configuring Hooks
+
+Add hooks to your settings files:
+
+```json
+// ~/.clanker/settings.json or project .clanker/settings.json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "bash",
+        "hooks": [{
+          "type": "command",
+          "command": "echo 'Running bash command: $TOOL_INPUT' >> audit.log"
+        }]
+      }
+    ]
+  }
+}
+```
+
+### Dynamic Hook Registration
+
+Tools can register hooks programmatically:
+
+```typescript
+export default async function(args: ToolArguments, context: ToolContext) {
+  // Register a hook
+  context.hooks.register({
+    id: 'my-hook',
+    name: 'My Custom Hook',
+    event: HookEvent.PostMessage,
+    handler: async (input, context) => {
+      // Hook logic here
+      return { continue: true };
+    }
+  });
+}
+```
+
+### Local Tool Development
+
+Develop and test tools locally before publishing:
+
+```bash
+# Install a tool from local directory
+clanker install --local ./my-tool
+
+# The tool is installed with its version from package.json
+clanker list  # Shows: my-org/my-tool@1.0.0
+```
+
+## Session Management
+
+Clanker now automatically saves your conversations and maintains session history:
+
+- Sessions are saved to `~/.clanker/sessions/`
+- Auto-save every 30 seconds (configurable)
+- Resume previous sessions with context
+- Export transcripts as JSONL
+
+### Session Commands
+
+```bash
+# Sessions are managed automatically
+clanker  # Starts new or resumes last session
+
+# View session info (when in chat)
+> /session
+
+# Export current session
+> /export
+```
 
 ## Common Tasks
 

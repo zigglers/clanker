@@ -470,12 +470,17 @@ program
 // Install command
 program
     .command('install <tool>')
-    .description('Install a tool (format: org/name or org/name@version)')
-    .action(async (tool) => {
+    .description('Install a tool (format: org/name or org/name@version for remote, path for local)')
+    .option('-l, --local', 'Install from local directory')
+    .action(async (tool, options) => {
         try {
             const packageManager = new PackageManager();
-            await packageManager.autoUpdateCache();
-            await packageManager.install(tool);
+            if (options.local) {
+                await packageManager.installLocal(tool);
+            } else {
+                await packageManager.autoUpdateCache();
+                await packageManager.install(tool);
+            }
         } catch (error) {
             console.error("❌ Error:", error instanceof Error ? error.message : String(error));
             process.exit(1);

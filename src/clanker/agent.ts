@@ -16,6 +16,9 @@ import {EventEmitter} from 'events';
 // import {TokenCounter, createTokenCounter} from '../utils/token-counter';
 import {debug} from '../utils/debug-logger';
 import * as path from 'path';
+import { HookManager } from '../hooks/hook-manager';
+import { SessionManager } from '../session/session-manager';
+import { HookEvent } from '../hooks/types';
 
 
 interface GrokAgentOptions {
@@ -27,6 +30,8 @@ interface GrokAgentOptions {
     loadDynamicTools?: boolean;
     dynamicToolsPath?: string;
     watchTools?: boolean;
+    sessionId?: string; // Resume existing session
+    sessionTitle?: string; // Title for new session
 }
 
 export interface StreamingChunk {
@@ -45,6 +50,10 @@ export class GrokAgent extends EventEmitter {
     private registry: ToolRegistry;
     private toolLoader?: ToolLoader;
     private executeToolWithRegistry: (name: string, args: Record<string, unknown>) => Promise<ToolResult>;
+    private hookManager: HookManager;
+    private sessionManager: SessionManager;
+    private sessionId?: string;
+    private initialized: boolean = false;
     // private tokenCounter: TokenCounter;
 
     constructor(options: GrokAgentOptions) {
@@ -60,6 +69,22 @@ export class GrokAgent extends EventEmitter {
 
         // Create registry
         this.registry = createToolRegistry();
+        
+        // Create hook manager
+        this.hookManager = HookManager.getInstance(this.registry);
+        
+        // Set hook manager in registry
+        if (this.registry.setHookManager) {
+            this.registry.setHookManager(this.hookManager);
+        }
+        
+        // Initialize session synchronously - actual loading happens in initialize()
+        this.sessionManager = new SessionManager(this.hookManager, {
+            title: options.sessionTitle
+        });
+        
+        // Store options for async initialization
+        this.sessionId = options.sessionId;
 
         // Create tool executor with retry logic
         this.executeToolWithRegistry = createToolExecutorWithRetry(this.registry);
@@ -93,6 +118,53 @@ export class GrokAgent extends EventEmitter {
 
         // Tools will be loaded when needed via waitForToolsToLoad()
     }
+    
+    /**
+     * Initialize agent (must be called before using the agent)
+     */
+    async initialize(): Promise<void> {
+        if (this.initialized) return;
+        
+        // Load tools
+        await this.waitForToolsToLoad();
+        
+        // Initialize session if needed
+        if (this.sessionId) {
+            // Load existing session
+            try {
+                const loadedSession = await SessionManager.load(this.sessionId, this.hookManager);
+                this.sessionManager = loadedSession;
+            } catch (error) {
+                debug.error('[GrokAgent] Failed to load session, using new one:', error);
+                // Session manager already created in constructor
+            }
+        } else {
+            // Execute SessionStart hooks for new session
+            const sessionStartInput = {
+                session_id: this.sessionManager.getId(),
+                transcript_path: '',
+                cwd: process.cwd(),
+                source: 'startup' as const
+            };
+            await this.hookManager.execute(HookEvent.SessionStart, sessionStartInput);
+        }
+        
+        this.initialized = true;
+    }
+    
+    /**
+     * Get current session ID
+     */
+    getSessionId(): string {
+        return this.sessionManager.getId();
+    }
+    
+    /**
+     * Save current session
+     */
+    async saveSession(): Promise<void> {
+        await this.sessionManager.save();
+    }
 
 
     async chat(
@@ -100,7 +172,20 @@ export class GrokAgent extends EventEmitter {
         systemPrompt?: string,
         stream: boolean = false
     ): Promise<string | AsyncGenerator<StreamingChunk, void, unknown>> {
+        // Ensure agent is initialized
+        if (!this.initialized) {
+            await this.initialize();
+        }
+        
         debug.log('[GrokAgent] chat called with', messages.length, 'messages, stream:', stream);
+        
+        // Add messages to session
+        for (const message of messages) {
+            await this.sessionManager.addMessage(message);
+        }
+        
+        // Get all messages from session (includes history)
+        const sessionMessages = this.sessionManager.getMessages();
         const allMessages: GrokMessage[] = [];
 
         // Add system prompt if provided
@@ -108,8 +193,12 @@ export class GrokAgent extends EventEmitter {
             allMessages.push({role: 'system', content: systemPrompt});
         }
 
-        // Add user messages
-        allMessages.push(...messages);
+        // Add session messages
+        allMessages.push(...sessionMessages.map(m => ({
+            role: m.role,
+            content: m.content,
+            tool_calls: m.tool_calls
+        })));
 
         // Get tool definitions from registry
         const tools = generateGrokTools(this.registry);
@@ -211,12 +300,14 @@ export class GrokAgent extends EventEmitter {
                 // Execute tool calls
                 const toolResults = await this.executeToolCalls(accumulatedToolCalls);
 
-                // Add assistant message
+                // Add assistant message to session
                 const assistantMessage = {
                     role: 'assistant',
                     content: accumulatedContent || '',
                     tool_calls: accumulatedToolCalls
                 } as GrokMessage;
+                
+                await this.sessionManager.addMessage(assistantMessage);
                 currentMessages.push(assistantMessage);
 
                 // Update total tokens to include the assistant message
@@ -307,11 +398,14 @@ export class GrokAgent extends EventEmitter {
 
                 // Add tool results
                 for (let i = 0; i < toolResults.length; i++) {
-                    currentMessages.push({
+                    const toolMessage = {
                         role: 'tool',
                         content: this.formatToolResult(toolResults[i]),
                         tool_call_id: message.tool_calls[i].id
-                    } as GrokMessage);
+                    } as GrokMessage;
+                    
+                    await this.sessionManager.addMessage(toolMessage);
+                    currentMessages.push(toolMessage);
                 }
 
                 rounds++;
@@ -382,7 +476,68 @@ export class GrokAgent extends EventEmitter {
             };
         }
 
-        return this.executeToolWithRegistry(toolName, args);
+        // Execute PreToolUse hooks
+        const preToolUseInput = {
+            session_id: this.sessionManager.getId(),
+            transcript_path: '',
+            cwd: process.cwd(),
+            tool_name: toolName,
+            tool_input: args
+        };
+        const preHookResults = await this.hookManager.execute(HookEvent.PreToolUse, preToolUseInput);
+        
+        // Check if any hook blocked execution
+        for (const result of preHookResults) {
+            if (result.output && 'permissionDecision' in result.output) {
+                const decision = result.output.hookSpecificOutput?.permissionDecision || 
+                               (result.output as any).decision;
+                
+                if (decision === 'deny' || decision === 'block') {
+                    return {
+                        success: false,
+                        error: result.output.hookSpecificOutput?.permissionDecisionReason ||
+                               (result.output as any).reason ||
+                               'Tool execution blocked by hook'
+                    };
+                }
+            }
+            
+            // Check if hook modified arguments
+            if (result.output && 'modifiedArgs' in result.output) {
+                args = result.output.modifiedArgs as Record<string, unknown>;
+            }
+        }
+        
+        // Execute the tool
+        const toolResult = await this.executeToolWithRegistry(toolName, args);
+        
+        // Store tool execution in session
+        await this.sessionManager.addToolExecution(toolCall, toolResult);
+        
+        // Execute PostToolUse hooks
+        const postToolUseInput = {
+            session_id: this.sessionManager.getId(),
+            transcript_path: '',
+            cwd: process.cwd(),
+            tool_name: toolName,
+            tool_input: args,
+            tool_response: toolResult
+        };
+        const postHookResults = await this.hookManager.execute(HookEvent.PostToolUse, postToolUseInput);
+        
+        // Check if any hook wants to modify the result
+        let finalResult = toolResult;
+        for (const result of postHookResults) {
+            if (result.output && 'data' in result.output && result.output.data) {
+                // Merge hook data into tool result
+                finalResult = {
+                    ...finalResult,
+                    hookData: result.output.data
+                };
+            }
+        }
+        
+        return finalResult;
     }
 
     private formatToolResult(result: ToolResult): string {

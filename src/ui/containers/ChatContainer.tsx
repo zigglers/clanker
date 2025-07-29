@@ -1,7 +1,6 @@
-import React, {useCallback, useEffect, useRef} from "react";
+import React, {useCallback, useRef} from "react";
 import {Box, useInput} from "ink";
 import {useSnapshot} from "valtio";
-import {GrokAgent} from "../../clanker/agent";
 import {ChatLayout} from "../components/chat/ChatLayout";
 import {CommandSuggestions} from "../components/command-suggestions";
 import {ChatHistory} from "../components/chat-history";
@@ -16,7 +15,6 @@ import {useProcessingTimer} from "../../hooks/useProcessingTimer";
 import {useRegistries} from "../../hooks/useRegistries";
 import {store, actions} from "../../store";
 import {StageType} from "../stage/types";
-import {debug} from "../../utils/debug-logger";
 import {useAgent} from "../../hooks/useAgent";
 
 /**
@@ -43,7 +41,6 @@ export function ChatContainer() {
         showCommandSuggestions,
         showModelSelection,
         handleEnter,
-        handleEscape,
         handleUpArrow,
         handleDownArrow,
     } = useInputHandler({

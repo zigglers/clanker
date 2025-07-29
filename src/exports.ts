@@ -10,3 +10,9 @@ export * from './registry/index';
 
 // Also export specific items that might be in different locations
 export type { ToolResult } from './types';
+
+// Export hook system
+export * from './hooks/index';
+
+// Export session system
+export * from './session/index';

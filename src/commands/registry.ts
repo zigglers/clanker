@@ -1,4 +1,4 @@
-import { CommandDefinition, CommandRegistry } from './types';
+import {CommandDefinition, CommandRegistry} from './types';
 
 export class CommandRegistryImpl implements CommandRegistry {
     private commands = new Map<string, CommandDefinition>();
@@ -25,7 +25,7 @@ export class CommandRegistryImpl implements CommandRegistry {
 
     listByCategory(): Record<string, CommandDefinition[]> {
         const categories: Record<string, CommandDefinition[]> = {};
-        
+
         for (const command of this.commands.values()) {
             const category = command.category || 'General';
             if (!categories[category]) {
@@ -33,12 +33,12 @@ export class CommandRegistryImpl implements CommandRegistry {
             }
             categories[category].push(command);
         }
-        
+
         // Sort commands within each category
         for (const category in categories) {
             categories[category].sort((a, b) => a.name.localeCompare(b.name));
         }
-        
+
         return categories;
     }
 }

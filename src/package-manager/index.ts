@@ -40,6 +40,13 @@ export class ClankerPackageManager {
   }
 
   /**
+   * Install a tool from local directory
+   */
+  async installLocal(toolPath: string, options?: { force?: boolean }): Promise<void> {
+    return this.installer.installLocal(toolPath, options);
+  }
+
+  /**
    * Uninstall a tool
    */
   async uninstall(toolSpec: string): Promise<void> {

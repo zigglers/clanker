@@ -173,6 +173,114 @@ export class ToolInstaller {
   }
 
   /**
+   * Install a tool from local directory
+   */
+  async installLocal(toolPath: string, options: InstallOptions = {}): Promise<void> {
+    debug.log(`[Installer] Installing local tool from ${toolPath}`);
+    
+    try {
+      // Resolve the absolute path
+      const absolutePath = path.resolve(toolPath);
+      
+      // Check if path exists
+      const stats = await fs.stat(absolutePath);
+      if (!stats.isDirectory()) {
+        throw new Error(`Path is not a directory: ${absolutePath}`);
+      }
+      
+      // Look for package.json
+      const packageJsonPath = path.join(absolutePath, 'package.json');
+      const packageJsonContent = await fs.readFile(packageJsonPath, 'utf-8');
+      const packageJson = JSON.parse(packageJsonContent);
+      
+      // Parse tool identifier from package.json
+      const match = packageJson.name?.match(/^@?([^/]+)\/([^@]+)$/);
+      if (!match) {
+        throw new Error(`Invalid package name in package.json: ${packageJson.name}`);
+      }
+      
+      const tool: ToolIdentifier = {
+        org: match[1],
+        name: match[2],
+        version: packageJson.version || '0.0.0'
+      };
+      
+      debug.log(`[Installer] Found local tool: ${tool.org}/${tool.name}@${tool.version}`);
+      
+      // Check if already installed
+      const manifest = await this.loadManifest();
+      const existing = manifest.installedTools.find(t => 
+        t.org === tool.org && t.name === tool.name
+      );
+      
+      if (existing && existing.version === tool.version && !options.force) {
+        console.log(`✅ ${tool.org}/${tool.name}@${tool.version} is already installed`);
+        return;
+      }
+      
+      console.log(`📦 Installing local tool ${tool.org}/${tool.name}@${tool.version}...`);
+      
+      // Create tool directory
+      const installPath = path.join(this.toolsDir, tool.org, tool.name, tool.version);
+      await fs.mkdir(path.dirname(installPath), { recursive: true });
+      
+      // Copy the tool directory
+      await this.copyDirectory(absolutePath, installPath);
+      
+      // Create index.js in the version directory
+      const indexPath = path.join(installPath, 'index.js');
+      const mainFile = packageJson.main || 'index.js';
+      const mainPath = path.join(installPath, mainFile);
+      
+      // If main file is not index.js, create a wrapper
+      if (mainFile !== 'index.js') {
+        const wrapperContent = `module.exports = require('./${mainFile}');\n`;
+        await fs.writeFile(indexPath, wrapperContent);
+      }
+      
+      // Update manifest
+      await this.updateManifest(tool, tool.version, indexPath);
+      
+      console.log(`✅ Successfully installed local tool ${tool.org}/${tool.name}@${tool.version}`);
+      
+      // Install dependencies if specified in package.json
+      const clankerConfig = packageJson.clanker || {};
+      if (!options.skipDependencies && clankerConfig.dependencies) {
+        for (const [depName, depVersion] of Object.entries(clankerConfig.dependencies)) {
+          console.log(`📦 Installing dependency: ${depName}@${depVersion}`);
+          await this.install(`${depName}@${depVersion}`, { ...options, skipDependencies: true });
+        }
+      }
+    } catch (error) {
+      console.error(`❌ Failed to install local tool from ${toolPath}: ${error instanceof Error ? error.message : String(error)}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Copy directory recursively
+   */
+  private async copyDirectory(src: string, dest: string): Promise<void> {
+    await fs.mkdir(dest, { recursive: true });
+    const entries = await fs.readdir(src, { withFileTypes: true });
+    
+    for (const entry of entries) {
+      const srcPath = path.join(src, entry.name);
+      const destPath = path.join(dest, entry.name);
+      
+      if (entry.isDirectory()) {
+        // Skip node_modules and .git
+        if (entry.name === 'node_modules' || entry.name === '.git') {
+          continue;
+        }
+        await this.copyDirectory(srcPath, destPath);
+      } else {
+        await fs.copyFile(srcPath, destPath);
+      }
+    }
+  }
+
+  /**
    * Parse tool specification string
    */
   private parseToolSpec(spec: string): ToolIdentifier {

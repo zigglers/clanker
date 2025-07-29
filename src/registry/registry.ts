@@ -26,6 +26,7 @@ import {createSharedStateAPI} from './shared-state';
 export class ToolRegistryImpl implements ToolRegistry {
     private tools = new Map<string, RegisteredTool>();
     private context: ToolContext;
+    private hookManager?: any;
 
     constructor(workingDirectory: string = process.cwd()) {
         this.context = {
@@ -35,6 +36,25 @@ export class ToolRegistryImpl implements ToolRegistry {
             state: new Map(),
             sharedState: createSharedStateAPI()
         };
+    }
+    
+    /**
+     * Set the hook manager (called after creation)
+     */
+    setHookManager(hookManager: any): void {
+        this.hookManager = hookManager;
+        this.context.hooks = hookManager;
+    }
+    
+    /**
+     * Get all tools as a map for dependency checking
+     */
+    private getToolsMap(): Record<string, ToolDefinition> {
+        const toolsMap: Record<string, ToolDefinition> = {};
+        for (const [id, registered] of this.tools) {
+            toolsMap[id] = registered.definition;
+        }
+        return toolsMap;
     }
 
     /**
@@ -179,7 +199,8 @@ export class ToolRegistryImpl implements ToolRegistry {
             // Create a context with logger for this specific execution
             const executionContext: ToolContext = {
                 ...this.context,
-                logger: createToolLogger(toolId)
+                logger: createToolLogger(toolId),
+                tools: this.getToolsMap()
             };
 
             const result = await tool.execute(args, executionContext);
