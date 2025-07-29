@@ -202,7 +202,11 @@ program
         "install a tool (format: org/name or org/name@version)"
     )
     .option(
-        "-U, --uninstall <tool>",
+        "-U, --upgrade",
+        "upgrade clanker CLI to the latest version"
+    )
+    .option(
+        "--uninstall <tool>",
         "uninstall a tool (format: org/name)"
     )
     .option(
@@ -270,7 +274,7 @@ program
             // Handle package manager commands first (these don't need API key)
             const packageManagerCommands = [
                 'install', 'uninstall', 'search', 'list', 'listAvailable',
-                'update', 'clearCache', 'addRepo', 'removeRepo', 'listRepos'
+                'update', 'upgrade', 'clearCache', 'addRepo', 'removeRepo', 'listRepos'
             ];
 
             const hasPackageManagerCommand = packageManagerCommands.some(cmd => options[cmd]);
@@ -285,6 +289,12 @@ program
 
                 if (options.uninstall) {
                     await packageManager.uninstall(options.uninstall);
+                    return;
+                }
+                
+                if (options.upgrade) {
+                    // Run the upgrade command
+                    await program.commands.find(cmd => cmd.name() === 'upgrade')?.parseAsync([], {from: 'user'});
                     return;
                 }
 
@@ -553,16 +563,141 @@ program
 
 // Update command
 program
-    .command('update <tool>')
-    .alias('upgrade')
-    .description('Update a tool to the latest version')
+    .command('update [tool]')
+    .description('Update a tool to the latest version (or all tools if no tool specified)')
     .action(async (tool) => {
         try {
             const packageManager = new PackageManager();
             await packageManager.autoUpdateCache();
-            await packageManager.update(tool);
+            
+            if (tool) {
+                // Update specific tool
+                await packageManager.update(tool);
+            } else {
+                // Update all installed tools
+                console.log("🔄 Updating all installed tools...");
+                
+                // Get list of installed tools
+                const {ToolInstaller} = await import('./package-manager/installer');
+                const installer = new ToolInstaller();
+                const installedTools = await installer.listInstalled();
+                
+                if (installedTools.length === 0) {
+                    console.log("ℹ️  No tools installed");
+                    return;
+                }
+                
+                let updatedCount = 0;
+                let failedCount = 0;
+                let alreadyLatestCount = 0;
+                
+                for (const installedTool of installedTools) {
+                    try {
+                        const toolId = `${installedTool.org}/${installedTool.name}`;
+                        console.log(`\n📦 Checking ${toolId}...`);
+                        
+                        // Try to update - it will check if update is needed
+                        const currentVersion = installedTool.version;
+                        
+                        // Get the registry to check latest version
+                        const {RegistryClient} = await import('./package-manager/registry');
+                        const registry = new RegistryClient();
+                        const registryData = await registry.fetchRegistry();
+                        const latestTool = registryData.tools.find(t => 
+                            t.org === installedTool.org && t.name === installedTool.name
+                        );
+                        
+                        if (!latestTool) {
+                            console.log(`⚠️  ${toolId} not found in registry`);
+                            failedCount++;
+                            continue;
+                        }
+                        
+                        if (latestTool.version === currentVersion) {
+                            console.log(`✓ ${toolId} is already at latest version (${currentVersion})`);
+                            alreadyLatestCount++;
+                        } else {
+                            console.log(`📥 Updating ${toolId} from ${currentVersion} to ${latestTool.version}...`);
+                            await packageManager.update(toolId);
+                            console.log(`✅ Successfully updated ${toolId} to ${latestTool.version}`);
+                            updatedCount++;
+                        }
+                    } catch (error) {
+                        console.error(`❌ Failed to update ${installedTool.org}/${installedTool.name}: ${error instanceof Error ? error.message : String(error)}`);
+                        failedCount++;
+                    }
+                }
+                
+                console.log(`\n📊 Update Summary:`);
+                console.log(`   ${updatedCount} tool(s) updated`);
+                console.log(`   ${alreadyLatestCount} tool(s) already at latest version`);
+                if (failedCount > 0) {
+                    console.log(`   ${failedCount} tool(s) failed to update`);
+                }
+                console.log(`\n✅ Update check complete`);
+            }
         } catch (error) {
             console.error("❌ Error:", error instanceof Error ? error.message : String(error));
+            process.exit(1);
+        }
+    });
+
+// Upgrade command - updates clanker itself
+program
+    .command('upgrade')
+    .alias('self-update')
+    .description('Upgrade clanker CLI to the latest version from npm')
+    .action(async () => {
+        try {
+            console.log("🚀 Checking for clanker updates...");
+            
+            // Check current version
+            const currentVersion = packageJson.version;
+            
+            // Check latest version from npm
+            const { exec } = await import('child_process');
+            const { promisify } = await import('util');
+            const execAsync = promisify(exec);
+            
+            try {
+                const { stdout } = await execAsync('npm view @ziggler/clanker version');
+                const latestVersion = stdout.trim();
+                
+                if (currentVersion === latestVersion) {
+                    console.log(`✅ Already running the latest version (${currentVersion})`);
+                    return;
+                }
+                
+                console.log(`📦 Current version: ${currentVersion}`);
+                console.log(`🆕 Latest version: ${latestVersion}`);
+                console.log("\n🔧 Upgrading clanker...");
+                
+                // Run npm install command
+                const installCmd = process.platform === 'win32' 
+                    ? 'npm.cmd install -g @ziggler/clanker@latest'
+                    : 'npm install -g @ziggler/clanker@latest';
+                    
+                console.log(`Running: ${installCmd}`);
+                const { stdout: installOut, stderr: installErr } = await execAsync(installCmd);
+                
+                if (installErr && !installErr.includes('npm WARN')) {
+                    throw new Error(installErr);
+                }
+                
+                console.log("\n✅ Clanker has been successfully upgraded!");
+                console.log("🎉 Please restart clanker to use the new version.");
+                
+            } catch (error) {
+                if (error instanceof Error && error.message.includes('404')) {
+                    console.error("❌ Could not find @ziggler/clanker on npm");
+                } else {
+                    throw error;
+                }
+            }
+        } catch (error) {
+            console.error("❌ Error upgrading clanker:", error instanceof Error ? error.message : String(error));
+            console.error("\nYou can try upgrading manually with:");
+            console.error("  npm install -g @ziggler/clanker@latest");
             process.exit(1);
         }
     });

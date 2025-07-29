@@ -46,6 +46,8 @@ Clanker will guide you through API key setup on first run.
 - 📦 **Local Tool Installation**: Install tools directly from local directories with `--local`
 - 🔧 **Enhanced Tool Context**: Tools can now execute other tools and access the hook system
 - 🔗 **Tool Dependencies**: Tools can declare dependencies that are automatically installed
+- 🔄 **Update All Tools**: Update all installed tools at once with `clanker --update`
+- 🚀 **Self-Update**: Keep clanker up-to-date with `clanker -U` or `clanker upgrade`
 
 ## What Can It Do?
 
@@ -122,10 +124,15 @@ clanker -I ziggle-dev/bash@1.0.0        # Install specific version
 clanker -L              # or clanker --list
 
 # Uninstall tools
-clanker -U ziggle-dev/bash              # or clanker --uninstall ziggle-dev/bash
+clanker --uninstall ziggle-dev/bash
 
 # Update tools to latest version
-clanker --update ziggle-dev/bash
+clanker --update ziggle-dev/bash        # Update specific tool
+clanker --update                        # Update all installed tools
+
+# Upgrade clanker itself
+clanker -U                              # or clanker --upgrade
+clanker upgrade                         # or clanker self-update
 
 # Clear package cache
 clanker --clear-cache

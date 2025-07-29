@@ -38,6 +38,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Programmatic tool execution from within tools
   - Settings management API
 
+- **Update All Tools**: New `--update` command with no parameters
+  - Updates all installed tools to their latest versions
+  - Shows detailed progress and summary
+  - Identifies tools that are already up-to-date
+
+- **Self-Update Command**: New `--upgrade` / `-U` flag and `upgrade` command
+  - Updates clanker itself to the latest version from npm
+  - Checks current vs latest version before updating
+  - Provides manual update instructions on failure
+
 ### Changed
 - Tools can now declare dependencies in package.json under `clanker.dependencies`
 - Tool initialization now supports async operations via agent.initialize()

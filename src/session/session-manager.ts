@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Session Manager - Handles chat session persistence and lifecycle
  */
