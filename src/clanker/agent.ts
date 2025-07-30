@@ -18,7 +18,8 @@ import {debug} from '../utils/debug-logger';
 import * as path from 'path';
 import { HookManager } from '../hooks/hook-manager';
 import { SessionManager } from '../session/session-manager';
-import { HookEvent } from '../hooks/types';
+import { HookEvent, PreToolUseOutput, EnhancedHookOutput } from '../hooks/types';
+import { fixMalformedArguments, ArgumentFixResult } from '../utils/argument-fixer';
 
 
 interface GrokAgentOptions {
@@ -194,11 +195,30 @@ export class GrokAgent extends EventEmitter {
         }
 
         // Add session messages
-        allMessages.push(...sessionMessages.map(m => ({
-            role: m.role,
-            content: m.content,
-            tool_calls: m.tool_calls
-        })));
+        allMessages.push(...sessionMessages.map(m => {
+            const baseMessage = {
+                role: m.role as 'user' | 'assistant' | 'system' | 'tool',
+                content: m.content
+            };
+            
+            // Only add tool_calls for assistant messages
+            if (m.role === 'assistant' && m.tool_calls) {
+                return {
+                    ...baseMessage,
+                    tool_calls: m.tool_calls
+                };
+            }
+            
+            // For tool messages, we need tool_call_id
+            if (m.role === 'tool' && m.tool_call_id) {
+                return {
+                    ...baseMessage,
+                    tool_call_id: m.tool_call_id
+                };
+            }
+            
+            return baseMessage;
+        }) as GrokMessage[]);
 
         // Get tool definitions from registry
         const tools = generateGrokTools(this.registry);
@@ -439,42 +459,111 @@ export class GrokAgent extends EventEmitter {
     async executeTool(toolCall: GrokToolCall): Promise<ToolResult> {
         const toolName = toolCall.function.name;
 
-        // Safely parse arguments
+        // Parse arguments with retry and format support
+        let fixResult: ArgumentFixResult;
         let args: Record<string, unknown>;
+        
         try {
+            // Try standard JSON parsing first
             args = JSON.parse(toolCall.function.arguments);
-        } catch (error) {
-            debug.error(`[Agent] Failed to parse arguments for ${toolName}:`);
-            debug.error(`[Agent] Raw arguments: ${JSON.stringify(toolCall.function.arguments)}`);
-            debug.error(`[Agent] Error: ${error}`);
+            fixResult = {
+                fixed: true,
+                calls: [{ args }],
+                fixMethod: 'none',
+                format: 'json'
+            };
+        } catch {
+            debug.log(`[Agent] Standard JSON parsing failed for ${toolName}, trying argument fixer`);
             
-            // Get tool info to provide better error message
-            const tool = this.registry.get(toolName);
-            // const hasRequiredArgs = tool?.definition.arguments?.some(arg => arg.required) ?? false;
+            // Use argument fixer with retry logic
+            fixResult = await fixMalformedArguments(
+                toolCall.function.arguments,
+                this.client,
+                'yaml', // Prefer YAML as it's more AI-friendly
+                5 // Max retries
+            );
             
-            // Build helpful error message
-            let errorMessage = `Failed to parse JSON arguments: ${error instanceof Error ? error.message : String(error)}`;
-            errorMessage += `\n\nThe raw arguments were: ${toolCall.function.arguments}`;
-            
-            if (tool) {
-                errorMessage += `\n\nTool "${toolName}" expects:`;
-                if (!tool.definition.arguments || tool.definition.arguments.length === 0) {
-                    errorMessage += '\n- No arguments required (use empty object: {})';
-                } else {
-                    tool.definition.arguments.forEach(arg => {
-                        errorMessage += `\n- ${arg.name}: ${arg.type}${arg.required ? ' (required)' : ' (optional)'}`;
-                        if (arg.description) {
-                            errorMessage += ` - ${arg.description}`;
-                        }
-                    });
+            if (!fixResult.fixed) {
+                debug.error(`[Agent] Failed to fix arguments for ${toolName} after all attempts`);
+                debug.error(`[Agent] Raw arguments: ${JSON.stringify(toolCall.function.arguments)}`);
+                debug.error(`[Agent] Error: ${fixResult.originalError}`);
+                
+                // Get tool info to provide better error message
+                const tool = this.registry.get(toolName);
+                
+                // Build helpful error message
+                let errorMessage = `Failed to parse arguments after ${fixResult.calls.length || 0} attempts: ${fixResult.originalError}`;
+                errorMessage += `\n\nThe raw arguments were: ${toolCall.function.arguments}`;
+                
+                if (tool) {
+                    errorMessage += `\n\nTool "${toolName}" expects:`;
+                    if (!tool.definition.arguments || tool.definition.arguments.length === 0) {
+                        errorMessage += '\n- No arguments required (use empty object: {})';
+                    } else {
+                        tool.definition.arguments.forEach(arg => {
+                            errorMessage += `\n- ${arg.name}: ${arg.type}${arg.required ? ' (required)' : ' (optional)'}`;
+                            if (arg.description) {
+                                errorMessage += ` - ${arg.description}`;
+                            }
+                        });
+                    }
                 }
+                
+                errorMessage += `\n\nTip: Try using YAML or XML format for tool arguments instead of JSON.`;
+                
+                return {
+                    success: false,
+                    error: errorMessage
+                };
             }
             
+            debug.log(`[Agent] Successfully fixed arguments using ${fixResult.fixMethod} method (${fixResult.format} format)`);
+        }
+        
+        // Handle multiple tool calls if concatenated
+        if (fixResult.calls.length > 1) {
+            debug.log(`[Agent] Found ${fixResult.calls.length} concatenated tool calls, executing them sequentially`);
+            
+            const results: ToolResult[] = [];
+            for (let i = 0; i < fixResult.calls.length; i++) {
+                const call = fixResult.calls[i];
+                debug.log(`[Agent] Executing concatenated call ${i + 1}/${fixResult.calls.length}`);
+                
+                // Create a new tool call with the fixed arguments
+                const fixedToolCall: GrokToolCall = {
+                    ...toolCall,
+                    id: `${toolCall.id}_${i}`,
+                    function: {
+                        ...toolCall.function,
+                        arguments: JSON.stringify(call.args)
+                    }
+                };
+                
+                // Execute this individual call
+                const result = await this.executeToolInternal(fixedToolCall, call.args);
+                results.push(result);
+            }
+            
+            // Combine results
+            const allSuccessful = results.every(r => r.success);
+            const combinedOutput = results
+                .map((r, i) => `[Call ${i + 1}] ${r.success ? r.output || 'Success' : `Error: ${r.error}`}`)
+                .join('\n\n');
+                
             return {
-                success: false,
-                error: errorMessage
+                success: allSuccessful,
+                output: combinedOutput,
+                data: { results, fixMethod: fixResult.fixMethod, format: fixResult.format }
             };
         }
+        
+        // Single tool call
+        args = fixResult.calls[0].args;
+        return this.executeToolInternal(toolCall, args);
+    }
+    
+    private async executeToolInternal(toolCall: GrokToolCall, args: Record<string, unknown>): Promise<ToolResult> {
+        const toolName = toolCall.function.name;
 
         // Execute PreToolUse hooks
         const preToolUseInput = {
@@ -489,14 +578,16 @@ export class GrokAgent extends EventEmitter {
         // Check if any hook blocked execution
         for (const result of preHookResults) {
             if (result.output && 'permissionDecision' in result.output) {
-                const decision = result.output.hookSpecificOutput?.permissionDecision || 
-                               (result.output as any).decision;
+                const preToolOutput = result.output as PreToolUseOutput;
+                const decision = preToolOutput.hookSpecificOutput?.permissionDecision || 
+                               preToolOutput.decision;
                 
                 if (decision === 'deny' || decision === 'block') {
+                    const preToolOutput = result.output as PreToolUseOutput;
                     return {
                         success: false,
-                        error: result.output.hookSpecificOutput?.permissionDecisionReason ||
-                               (result.output as any).reason ||
+                        error: preToolOutput.hookSpecificOutput?.permissionDecisionReason ||
+                               preToolOutput.reason ||
                                'Tool execution blocked by hook'
                     };
                 }
@@ -528,12 +619,18 @@ export class GrokAgent extends EventEmitter {
         // Check if any hook wants to modify the result
         let finalResult = toolResult;
         for (const result of postHookResults) {
-            if (result.output && 'data' in result.output && result.output.data) {
-                // Merge hook data into tool result
-                finalResult = {
-                    ...finalResult,
-                    hookData: result.output.data
-                };
+            if (result.output && 'data' in result.output) {
+                const enhancedOutput = result.output as EnhancedHookOutput;
+                if (enhancedOutput.data) {
+                    // If hook provided data, merge it into the tool result's data field
+                    finalResult = {
+                        ...finalResult,
+                        data: {
+                            ...(typeof finalResult.data === 'object' ? finalResult.data : {}),
+                            hookData: enhancedOutput.data
+                        }
+                    };
+                }
             }
         }
         

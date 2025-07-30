@@ -1,6 +1,6 @@
 {
   "name": "@ziggler/clanker",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "description": "AI agents that actually do things - real actions, real changes, real time",
   "type": "module",
   "main": "dist/index.js",
@@ -57,6 +57,7 @@
   },
   "homepage": "https://github.com/zigglers/clanker#readme",
   "dependencies": {
+    "@types/js-yaml": "^4.0.9",
     "@types/prismjs": "^1.26.5",
     "@types/react-dom": "19.1.6",
     "@types/uuid": "^10.0.0",
@@ -74,6 +75,7 @@
     "ink-gradient": "^3.0.0",
     "ink-markdown": "^1.0.4",
     "ink-select-input": "^6.2.0",
+    "js-yaml": "^4.1.0",
     "open": "^10.2.0",
     "openai": "^5.10.2",
     "prismjs": "^1.30.0",
@@ -83,6 +85,7 @@
     "tiktoken": "^1.0.21",
     "uuid": "^11.1.0",
     "valtio": "^2.1.5",
+    "xml2js": "^0.6.2",
     "zod": "^3.24.1",
     "zog": "^0.0.0",
     "zustand": "^5.0.3"
