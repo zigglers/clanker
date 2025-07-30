@@ -480,7 +480,7 @@ export class GrokAgent extends EventEmitter {
                 toolCall.function.arguments,
                 this.client,
                 'yaml', // Prefer YAML as it's more AI-friendly
-                5 // Max retries
+                -1 // Never give up - infinite retries
             );
             
             if (!fixResult.fixed) {

@@ -40,7 +40,8 @@ export interface ToolCallArgument {
 export async function fixMalformedArguments(
     argString: string, 
     client?: GrokClient,
-    preferredFormat?: 'json' | 'yaml' | 'xml'
+    preferredFormat?: 'json' | 'yaml' | 'xml',
+    maxRetries: number = 10  // Use -1 for infinite retries
 ): Promise<ArgumentFixResult> {
     debug.log('[ArgumentFixer] Attempting to fix malformed arguments');
     
@@ -81,11 +82,26 @@ export async function fixMalformedArguments(
         }
     }
     
+    // If we still have retries left (or infinite retries) and AI is available, keep trying
+    if ((maxRetries > 0 || maxRetries === -1) && client) {
+        debug.log(`[ArgumentFixer] Retrying... (${maxRetries} attempts remaining)`);
+        
+        // Wait a bit before retrying
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Try with different format preferences in rotation
+        const nextFormat = preferredFormat === 'json' ? 'yaml' : 
+                          preferredFormat === 'yaml' ? 'xml' : 'json';
+        
+        const nextRetries = maxRetries === -1 ? -1 : maxRetries - 1;
+        return fixMalformedArguments(argString, client, nextFormat, nextRetries);
+    }
+    
     // All strategies failed
     return {
         fixed: false,
         calls: [],
-        originalError: initialResult.originalError || 'Failed to parse arguments'
+        originalError: initialResult.originalError || 'Failed to parse arguments after all retries'
     };
 }
 

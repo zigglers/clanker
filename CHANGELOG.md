@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.6] - 2025-07-30
+
+### Added
+- **Infinite Retry Logic**: Enhanced argument fixer with "never give up" mode
+  - Added `maxRetries` parameter to `fixMalformedArguments()` function
+  - Support for `-1` as sentinel value for infinite retries
+  - Automatic rotation through different format preferences (JSON → YAML → XML)
+  - Agent now uses infinite retries by default for maximum resilience
+
+### Fixed
+- **Argument Fixing**: Improved handling of malformed tool arguments
+  - Better recovery from concatenated JSON objects
+  - Enhanced format detection and conversion
+  - More robust error messages with helpful context
+
+### Developer Notes
+- The argument fixer now supports infinite retries to handle persistent AI formatting issues
+- Note: Some errors occur at the API level before reaching our code (e.g., Grok API server-side validation)
+
 ## [0.3.4] - 2025-07-30
 
 ### Added
