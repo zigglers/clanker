@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.61] - 2025-07-30
+
+### Added
+- **Prompt Preprocessor**: Smart detection and mitigation for multi-tool call scenarios
+  - Detects patterns that would trigger multiple TTS tool calls
+  - Automatically modifies prompts to encourage sequential single calls
+  - Prevents Grok API "trailing characters" JSON validation errors
+  - Pattern detection for conversations, multiple voices, and sequential actions
+
+### Improved
+- **Multi-Voice Conversations**: Now work reliably with TTS tools
+  - Conversations between multiple voices (Clanker, Rachael, Adam) execute successfully
+  - Each voice speaks sequentially without JSON parsing errors
+  - Enhanced system prompts guide the model to avoid problematic patterns
+
+### Developer Notes
+- The prompt preprocessor helps work around Grok API's strict JSON validation
+- Multi-tool calls now execute sequentially (with pauses) rather than failing
+- This is a workaround for server-side validation that rejects concatenated JSON
+
 ## [0.3.6] - 2025-07-30
 
 ### Added

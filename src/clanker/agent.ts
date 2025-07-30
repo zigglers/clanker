@@ -20,6 +20,7 @@ import { HookManager } from '../hooks/hook-manager';
 import { SessionManager } from '../session/session-manager';
 import { HookEvent, PreToolUseOutput, EnhancedHookOutput } from '../hooks/types';
 import { fixMalformedArguments, ArgumentFixResult } from '../utils/argument-fixer';
+import { preprocessPrompt, enhanceSystemPrompt } from '../utils/prompt-preprocessor';
 
 
 interface GrokAgentOptions {
@@ -180,8 +181,20 @@ export class GrokAgent extends EventEmitter {
         
         debug.log('[GrokAgent] chat called with', messages.length, 'messages, stream:', stream);
         
+        // Preprocess user messages to avoid multi-tool call issues
+        const processedMessages = messages.map(msg => {
+            if (msg.role === 'user') {
+                const preprocessResult = preprocessPrompt(msg.content);
+                if (preprocessResult.modified) {
+                    debug.log('[GrokAgent] Preprocessed user prompt to avoid multi-tool calls');
+                    return { ...msg, content: preprocessResult.prompt };
+                }
+            }
+            return msg;
+        });
+        
         // Add messages to session
-        for (const message of messages) {
+        for (const message of processedMessages) {
             await this.sessionManager.addMessage(message);
         }
         
@@ -189,9 +202,15 @@ export class GrokAgent extends EventEmitter {
         const sessionMessages = this.sessionManager.getMessages();
         const allMessages: GrokMessage[] = [];
 
+        // Check if we need to enhance system prompt based on user messages
+        const lastUserMessage = messages.find(m => m.role === 'user');
+        const enhancedSystemPrompt = lastUserMessage 
+            ? enhanceSystemPrompt(systemPrompt || '', lastUserMessage.content)
+            : systemPrompt;
+
         // Add system prompt if provided
-        if (systemPrompt) {
-            allMessages.push({role: 'system', content: systemPrompt});
+        if (enhancedSystemPrompt) {
+            allMessages.push({role: 'system', content: enhancedSystemPrompt});
         }
 
         // Add session messages
