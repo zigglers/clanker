@@ -1,6 +1,6 @@
 {
   "name": "@ziggler/clanker",
-  "version": "0.3.61",
+  "version": "0.3.62",
   "description": "AI agents that actually do things - real actions, real changes, real time",
   "type": "module",
   "main": "dist/index.js",
@@ -47,7 +47,7 @@
     "grokcli"
   ],
   "author": "Ziggler",
-  "license": "MIT",
+  "license": "PROPRIETARY",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/zigglers/clanker.git"
