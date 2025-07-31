@@ -72,6 +72,19 @@ export class GrokAgent extends EventEmitter {
         // Create registry
         this.registry = createToolRegistry();
         
+        // Share API key with tools through shared state
+        // This allows tools like web-search to access the same API key
+        if (options.apiKey) {
+            this.registry.getContext().sharedState.set('clanker:apiKey', options.apiKey);
+            debug.log('[GrokAgent] Shared API key with tools via shared state');
+        }
+        
+        // Also share the provider and base URL for tools that might need it
+        this.registry.getContext().sharedState.set('clanker:provider', 'grok');
+        if (options.baseURL) {
+            this.registry.getContext().sharedState.set('clanker:baseURL', options.baseURL);
+        }
+        
         // Create hook manager
         this.hookManager = HookManager.getInstance(this.registry);
         

@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.64] - 2025-07-31
+
+### Added
+- **Shared State API Key**: Tools can now access Clanker's API key through shared state
+  - API key is automatically shared when GrokAgent is initialized
+  - Tools can access via `context.sharedState.get('clanker:apiKey')`
+  - Provider and base URL are also shared for tool compatibility
+  - Enables seamless integration for tools that need the same API access
+
+### Developer Notes
+- This change allows tools like web-search to use the same X AI API key without requiring duplicate configuration
+- Maintains security by only sharing with tools that have explicit access to the context
+- Part of the philosophy to make tools work seamlessly within the Clanker ecosystem
+
 ## [0.3.61] - 2025-07-30
 
 ### Added
