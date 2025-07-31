@@ -1,7 +1,28 @@
+<h1>⚠️ PROJECT DISCONTINUED ⚠️</h1>
+
+<div align="center">
+  <h2>This project has been discontinued and is no longer maintained.</h2>
+  <p><strong>Please look elsewhere for alternatives.</strong></p>
+</div>
+
+## Recommended Alternatives
+
+We recommend using one of these actively maintained alternatives:
+
+- **[grokcli](https://github.com/grokcli/grokcli)** - A powerful CLI tool for interacting with AI models
+- **[Claude Code](https://claude.ai)** - Anthropic's coding assistant with excellent capabilities
+- **[Cursor](https://cursor.sh)** - An AI-powered code editor
+- **[GitHub Copilot](https://github.com/features/copilot)** - AI pair programming in your IDE
+
+---
+
+<details>
+<summary>Original README (Archived)</summary>
+
 <h1>Clanker</h1>
   <p>
     <img alt="npm version" src="https://img.shields.io/npm/v/@ziggler/clanker?style=flat-square&color=00D9FF">
-    <img alt="license" src="https://img.shields.io/badge/license-MIT-blue?style=flat-square">
+    <img alt="license" src="https://img.shields.io/badge/license-PROPRIETARY-red?style=flat-square">
     <img alt="node version" src="https://img.shields.io/node/v/@ziggler/clanker?style=flat-square&color=43B02A">
     <img alt="downloads" src="https://img.shields.io/npm/dm/@ziggler/clanker?style=flat-square&color=FF6B6B">
   </p>
