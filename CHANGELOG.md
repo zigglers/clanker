@@ -5,6 +5,52 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2025-08-06
+
+### Added
+- **GitHub-Based Self-Updates**: Replaced npm updates with direct GitHub source builds
+  - `clanker upgrade` now downloads from GitHub releases instead of npm
+  - Builds and installs locally to `~/.clanker/cli`
+  - Support for `--force` flag to force updates
+  - Support for `--source` flag to install from local development
+  - Automatic migration from npm-installed versions
+
+- **Private Repository Support**: Full GitHub CLI authentication for private registries
+  - New `github-auth.ts` module for GitHub CLI integration
+  - Automatic detection and use of `gh` CLI for authentication
+  - Support for private tool registries
+  - Fallback mechanisms for public repositories
+  - Token retrieval from GitHub CLI or environment variables
+
+- **Multiple Upstream Registries**: Enhanced repository management
+  - Waterfall/cascade resolution for tool discovery
+  - Priority ordering (first matching tool wins)
+  - Commands: `add-repo`, `remove-repo`, `list-repos`
+  - Support for both public and private repositories
+
+### Changed
+- **Repository Organization**: Moved infrastructure to zigglers organization
+  - Clanker core moved to https://github.com/zigglers/clanker
+  - Template repository at https://github.com/zigglers/clanker-registry-template
+  - Tools remain under ziggle-dev namespace
+
+- **Upgrade Command**: Complete overhaul of self-update mechanism
+  - No longer depends on npm registry
+  - Downloads directly from GitHub releases
+  - Builds from source locally
+  - Installs to `~/.clanker/cli` instead of npm global
+
+### Fixed
+- Registry client now properly authenticates with private repositories
+- Tool installation from private registries works seamlessly
+- Cache clearing properly removes registry cache
+
+### Developer Notes
+- This is a major architectural change moving away from npm distribution
+- Users can now host completely private tool ecosystems
+- GitHub CLI (`gh`) is now recommended for private repository access
+- The template repository enables decentralized tool management
+
 ## [0.3.64] - 2025-07-31
 
 ### Added
