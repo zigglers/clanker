@@ -584,62 +584,32 @@ program
         }
     });
 
-// Upgrade command - updates clanker itself
+// Upgrade command - Now uses GitHub releases instead of npm
 program
     .command('upgrade')
     .alias('self-update')
-    .description('Upgrade clanker CLI to the latest version from npm')
-    .action(async () => {
+    .description('Upgrade clanker CLI to the latest version from GitHub')
+    .option('-f, --force', 'Force update even if already on latest version')
+    .option('-s, --source [path]', 'Install from local source directory')
+    .action(async (options) => {
         try {
-            console.log("🚀 Checking for clanker updates...");
+            const { SelfUpdater } = await import('./commands/self-updater');
+            const updater = new SelfUpdater();
             
-            // Check current version
-            const currentVersion = packageJson.version;
-            
-            // Check latest version from npm
-            const { exec } = await import('child_process');
-            const { promisify } = await import('util');
-            const execAsync = promisify(exec);
-            
-            try {
-                const { stdout } = await execAsync('npm view @ziggler/clanker version');
-                const latestVersion = stdout.trim();
-                
-                if (currentVersion === latestVersion) {
-                    console.log(`✅ Already running the latest version (${currentVersion})`);
-                    return;
-                }
-                
-                console.log(`📦 Current version: ${currentVersion}`);
-                console.log(`🆕 Latest version: ${latestVersion}`);
-                console.log("\n🔧 Upgrading clanker...");
-                
-                // Run npm install command
-                const installCmd = process.platform === 'win32' 
-                    ? 'npm.cmd install -g @ziggler/clanker@latest'
-                    : 'npm install -g @ziggler/clanker@latest';
-                    
-                console.log(`Running: ${installCmd}`);
-                const { stdout: installOut, stderr: installErr } = await execAsync(installCmd);
-                
-                if (installErr && !installErr.includes('npm WARN')) {
-                    throw new Error(installErr);
-                }
-                
-                console.log("\n✅ Clanker has been successfully upgraded!");
-                console.log("🎉 Please restart clanker to use the new version.");
-                
-            } catch (error) {
-                if (error instanceof Error && error.message.includes('404')) {
-                    console.error("❌ Could not find @ziggler/clanker on npm");
-                } else {
-                    throw error;
-                }
+            if (options.source) {
+                // Install from local source for development
+                await updater.installFromSource(options.source === true ? undefined : options.source);
+            } else {
+                // Normal update from GitHub
+                await updater.selfUpdate(options.force);
             }
         } catch (error) {
             console.error("❌ Error upgrading clanker:", error instanceof Error ? error.message : String(error));
-            console.error("\nYou can try upgrading manually with:");
-            console.error("  npm install -g @ziggler/clanker@latest");
+            console.error("\nFor manual installation:");
+            console.error("  1. Clone the repository: gh repo clone zigglers/clanker");
+            console.error("  2. Install dependencies: npm install");
+            console.error("  3. Build the project: npm run build");
+            console.error("  4. Install globally: npm link");
             process.exit(1);
         }
     });

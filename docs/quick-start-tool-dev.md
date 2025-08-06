@@ -5,7 +5,7 @@ This guide will walk you through creating your first Clanker tool in 5 minutes.
 ## 1. Create Your Tool Project
 
 ```bash
-npx create-rachet-tool
+npx create-clanker-tool
 ```
 
 Answer the prompts:
@@ -24,27 +24,30 @@ npm install
 
 ## 3. Edit Your Tool
 
-Open `src/index.ts` and modify it:
+Open `src/index.ts` and modify it using the modern builder pattern:
 
 ```typescript
-const hello_world = {
-  id: 'hello_world',
-  name: 'hello-world',
-  description: 'A simple hello world tool',
+import { createTool, ToolCategory, ToolCapability } from '@ziggler/clanker';
+
+export default createTool()
+  .id('hello_world')
+  .name('Hello World')
+  .description('A simple hello world tool')
+  .category(ToolCategory.Utility)
+  .tags('hello', 'greeting', 'example')
   
-  arguments: [
-    {
-      name: 'name',
-      type: 'string',
-      description: 'Name to greet',
-      required: false,
-      default: 'World'
-    }
-  ],
+  // Define arguments
+  .stringArg('name', 'Name to greet', {
+    required: false,
+    default: 'World'
+  })
   
-  execute: async (args) => {
+  // Implement execution logic
+  .execute(async (args, context) => {
     const { name } = args;
     const greeting = `Hello, ${name}! 👋`;
+    
+    context.logger?.info(`Greeting ${name}`);
     
     return {
       success: true,
@@ -54,10 +57,23 @@ const hello_world = {
         timestamp: new Date().toISOString()
       }
     };
-  }
-};
-
-export default hello_world;
+  })
+  
+  // Add examples for documentation
+  .examples([
+    {
+      description: 'Greet the world',
+      arguments: {},
+      result: 'Hello, World! 👋'
+    },
+    {
+      description: 'Greet a specific person',
+      arguments: { name: 'Alice' },
+      result: 'Hello, Alice! 👋'
+    }
+  ])
+  
+  .build();
 ```
 
 ## 4. Build and Test Locally
@@ -114,41 +130,53 @@ This will:
 3. Create a PR template
 4. Guide you through submission
 
+## Important Configuration Notes
+
+### Package.json Configuration
+Your `package.json` must include:
+- `"type": "module"` for ES module support
+- `"main": "src/index.ts"` pointing to TypeScript source
+- Modern `@ziggler/clanker` dependency (^0.2.6 or higher)
+- Peer dependencies for `ink` and `react`
+
+### TypeScript Configuration
+Your `tsconfig.json` should have:
+- `"module": "ES2020"` or higher
+- Paths mapping: `"@ziggler/clanker": ["./node_modules/@ziggler/clanker/dist/exports"]`
+- Enable `esModuleInterop` and `skipLibCheck`
+
 ## What's Next?
 
 - Read the full [Tool Development Guide](tools.md)
 - Explore the [Package Manager](package-manager.md)
-- Browse [existing tools](https://github.com/zigglers/rachet)
-- Join the [community](https://github.com/zigglers/clanker/discussions)
+- Browse [existing tools](https://github.com/ziggle-dev/clanker-tools)
+- Join the [community](https://github.com/ziggle-dev/clanker/discussions)
 
 ## Example: Weather Tool
 
-Here's a slightly more complex example:
+Here's a slightly more complex example using the builder pattern:
 
 ```typescript
-const weather_tool = {
-  id: 'weather',
-  name: 'Weather Checker',
-  description: 'Check weather for any location',
+import { createTool, ToolCategory, ToolCapability } from '@ziggler/clanker';
+
+export default createTool()
+  .id('weather')
+  .name('Weather Checker')
+  .description('Check weather for any location')
+  .category(ToolCategory.Utility)
+  .capabilities(ToolCapability.NetworkAccess)
+  .tags('weather', 'forecast', 'temperature')
   
-  arguments: [
-    {
-      name: 'location',
-      type: 'string',
-      description: 'City name',
-      required: true
-    },
-    {
-      name: 'units',
-      type: 'string',
-      description: 'Temperature units',
-      required: false,
-      default: 'celsius',
-      enum: ['celsius', 'fahrenheit']
-    }
-  ],
+  // Arguments
+  .stringArg('location', 'City name', { required: true })
+  .stringArg('units', 'Temperature units', {
+    required: false,
+    default: 'celsius',
+    enum: ['celsius', 'fahrenheit']
+  })
   
-  execute: async (args) => {
+  // Execute
+  .execute(async (args, context) => {
     const { location, units } = args;
     
     // In a real tool, you'd call a weather API
@@ -156,6 +184,8 @@ const weather_tool = {
     const conditions = ['sunny', 'cloudy', 'rainy'][Math.floor(Math.random() * 3)];
     
     const unitSymbol = units === 'celsius' ? '°C' : '°F';
+    
+    context.logger?.info(`Checking weather for ${location}`);
     
     return {
       success: true,
@@ -167,10 +197,23 @@ const weather_tool = {
         conditions
       }
     };
-  }
-};
-
-export default weather_tool;
+  })
+  
+  // Examples
+  .examples([
+    {
+      description: 'Check weather in London',
+      arguments: { location: 'London' },
+      result: 'Weather in London: cloudy, 18°C'
+    },
+    {
+      description: 'Check weather in Fahrenheit',
+      arguments: { location: 'New York', units: 'fahrenheit' },
+      result: 'Weather in New York: sunny, 72°F'
+    }
+  ])
+  
+  .build();
 ```
 
 ## Tips

@@ -1,0 +1,5262 @@
+# Clanker API Reference
+
+Complete API documentation for Clanker's programmatic interfaces.
+
+## Command Line Interface
+
+### Basic Usage
+
+```bash
+clanker [options]
+```
+
+### Options
+
+| Option | Short | Description | Default |
+|--------|-------|-------------|---------|
+| `--api-key <key>` | `-k` | API key for AI provider | ENV: CLANKER_API_KEY |
+| `--base-url <url>` | `-u` | Base URL for API endpoint | Provider default |
+| `--model <model>` | `-m` | AI model to use | Provider default |
+| `--provider <name>` | | AI provider (openai, anthropic, custom) | grok |
+| `--prompt <text>` | `-p` | Process single prompt (headless mode) | Interactive mode |
+| `--directory <dir>` | `-d` | Set working directory | Current directory |
+| `--debug` | | Enable debug logging | false |
+| `--list-tools` | | List available tools and exit | false |
+| `--load-dynamic-tools` | | Load tools from .clanker/tools | true |
+| `--tools-path <path>` | | Custom dynamic tools directory | .clanker/tools |
+| `--no-confirmations` | | Skip all confirmations (dangerous!) | false |
+| `--help` | `-h` | Show help | |
+| `--version` | `-v` | Show version | |
+
+### Examples
+
+```bash
+# Interactive mode with specific model
+clanker --model gpt-4
+
+# Headless execution
+clanker --prompt "analyze package.json for vulnerabilities"
+
+# Custom provider
+clanker --base-url http://localhost:11434/v1 --model llama2
+
+# Debug mode with tool listing
+clanker --debug --list-tools
+```
+
+## Configuration API
+
+### Settings Structure
+
+```typescript
+interface UserSettings {
+  apiKey?: string;
+  provider?: 'grok' | 'openai' | 'anthropic' | 'custom';
+  model?: string;
+  customBaseURL?: string;
+  confirmBeforeExecute?: boolean;
+  theme?: 'dark' | 'light' | 'auto';
+  defaultToolSettings?: {
+    [toolId: string]: any;
+  };
+}
+```
+
+### Configuration Files
+
+#### User Settings (`~/.clanker/user-settings.json`)
+
+```json
+{
+  "apiKey": "sk-...",
+  "provider": "openai",
+  "model": "gpt-4",
+  "confirmBeforeExecute": true,
+  "theme": "dark"
+}
+```
+
+#### Project Instructions (`./CLANKER.md`)
+
+```markdown
+# Project Context
+
+This project uses:
+- TypeScript with strict mode
+- React functional components
+- Vitest for testing
+
+## Coding Standards
+- Prefer const over let
+- Use async/await over promises
+- Follow existing naming conventions
+```
+
+## Tool Development API
+
+### Tool Interface
+
+```typescript
+interface Tool {
+  id: string;
+  name: string;
+  description: string;
+  inputSchema: ZodSchema;
+  outputSchema?: ZodSchema;
+  execute: ToolExecutor;
+  renderResult?: ResultRenderer;
+  requiresConfirmation?: boolean;
+  getConfirmationMessage?: ConfirmationMessageGetter;
+}
+```
+
+### Tool Builder API
+
+```typescript
+import { createTool } from '@ziggler/clanker';
+
+const tool = createTool()
+  .id('my_tool')
+  .name('My Tool')
+  .description('Tool description')
+  .stringArg('input', 'Input description', { required: true })
+  .numberArg('count', 'Count description', { default: 1 })
+  .booleanArg('verbose', 'Verbose output', { default: false })
+  .execute(async (args, context) => {
+    // Implementation
+    return { success: true, output: 'Result' };
+  })
+  .build();
+```
+
+### Argument Types
+
+#### String Arguments
+
+```typescript
+.stringArg(name: string, description: string, options?: {
+  required?: boolean;
+  default?: string;
+  enum?: string[];
+  pattern?: RegExp;
+  minLength?: number;
+  maxLength?: number;
+})
+```
+
+#### Number Arguments
+
+```typescript
+.numberArg(name: string, description: string, options?: {
+  required?: boolean;
+  default?: number;
+  min?: number;
+  max?: number;
+  integer?: boolean;
+})
+```
+
+#### Boolean Arguments
+
+```typescript
+.booleanArg(name: string, description: string, options?: {
+  required?: boolean;
+  default?: boolean;
+})
+```
+
+#### Array Arguments
+
+```typescript
+.arrayArg(name: string, description: string, itemType: 'string' | 'number', options?: {
+  required?: boolean;
+  default?: any[];
+  minItems?: number;
+  maxItems?: number;
+  unique?: boolean;
+})
+```
+
+#### Object Arguments
+
+```typescript
+.objectArg(name: string, description: string, schema: ZodObject, options?: {
+  required?: boolean;
+  default?: object;
+})
+```
+
+### Execution Context
+
+```typescript
+interface ExecutionContext {
+  registry: ToolRegistry;          // Access other tools
+  logger: Logger;                  // Logging utilities
+  confirmationService: ConfirmationService;
+  workingDirectory: string;
+  settings: UserSettings;
+  reportProgress: (percent: number, message?: string) => void;
+  signal?: AbortSignal;           // For cancellation
+}
+```
+
+### Tool Registry API
+
+```typescript
+interface ToolRegistry {
+  // Tool management
+  register(tool: Tool): void;
+  unregister(toolId: string): void;
+  get(toolId: string): Tool | undefined;
+  list(): Tool[];
+  
+  // Tool execution
+  execute<T = any>(
+    toolId: string, 
+    args: Record<string, any>
+  ): Promise<ToolResult<T>>;
+  
+  // Batch operations
+  executeMany(
+    executions: Array<{ toolId: string; args: any }>
+  ): Promise<ToolResult[]>;
+  
+  // Tool composition
+  compose(
+    type: 'sequence' | 'parallel' | 'map',
+    toolIds: string[],
+    options?: CompositionOptions
+  ): Tool;
+}
+```
+
+## Agent API
+
+### GrokAgent
+
+```typescript
+class GrokAgent extends EventEmitter {
+  constructor(options: GrokAgentOptions);
+  
+  // Chat methods
+  async chat(
+    messages: GrokMessage[],
+    onChunk?: (chunk: StreamingChunk) => void,
+    streaming?: boolean
+  ): Promise<string | void>;
+  
+  // Registry access
+  getRegistry(): ToolRegistry;
+  
+  // Statistics
+  getToolStats(): ToolStatistics;
+  getTokenUsage(): TokenUsage;
+  
+  // Events
+  on(event: 'chunk', listener: (chunk: StreamingChunk) => void): this;
+  on(event: 'tool-start', listener: (tool: string, args: any) => void): this;
+  on(event: 'tool-end', listener: (tool: string, result: ToolResult) => void): this;
+  on(event: 'error', listener: (error: Error) => void): this;
+}
+```
+
+### Message Types
+
+```typescript
+interface GrokMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+  tool_calls?: ToolCall[];
+}
+
+interface ToolCall {
+  id: string;
+  type: 'function';
+  function: {
+    name: string;
+    arguments: string;  // JSON string
+  };
+}
+```
+
+### Streaming Types
+
+```typescript
+interface StreamingChunk {
+  type: 'content' | 'tool_calls' | 'tool_result' | 'done' | 'token_count';
+  content?: string;
+  toolCalls?: ToolCall[];
+  toolResult?: ToolResult;
+  tokenCount?: number;
+}
+```
+
+## State Management API
+
+### Store Structure
+
+```typescript
+interface Store {
+  // UI State
+  currentStage: Stage;
+  settings: UserSettings;
+  
+  // Chat State
+  messages: Message[];
+  inputValue: string;
+  isProcessing: boolean;
+  
+  // Execution State
+  executions: ToolExecution[];
+  currentExecution?: ToolExecution;
+  
+  // Confirmation State
+  pendingConfirmation?: ConfirmationRequest;
+  confirmationHistory: ConfirmationDecision[];
+}
+```
+
+### Actions
+
+```typescript
+const actions = {
+  // Navigation
+  setStage(stage: Stage): void;
+  
+  // Settings
+  updateSettings(settings: Partial<UserSettings>): void;
+  
+  // Chat
+  addMessage(message: Message): void;
+  clearMessages(): void;
+  setInputValue(value: string): void;
+  
+  // Execution
+  startExecution(toolId: string, args: any): void;
+  updateExecution(id: string, update: Partial<ToolExecution>): void;
+  completeExecution(id: string, result: ToolResult): void;
+  
+  // Confirmation
+  requestConfirmation(request: ConfirmationRequest): void;
+  resolveConfirmation(decision: ConfirmationDecision): void;
+};
+```
+
+### React Hooks
+
+```typescript
+// Access store state
+import { useSnapshot } from 'valtio';
+import { store } from '@ziggler/clanker';
+
+function MyComponent() {
+  const snap = useSnapshot(store);
+  return <div>{snap.currentStage}</div>;
+}
+
+// Use actions
+import { actions } from '@ziggler/clanker';
+
+function MyButton() {
+  return (
+    <button onClick={() => actions.setStage('settings')}>
+      Settings
+    </button>
+  );
+}
+```
+
+## UI Component API
+
+### Custom Tool UI
+
+```typescript
+interface ResultRenderer {
+  (props: {
+    result: ToolResult;
+    args: any;
+    isExecuting: boolean;
+  }): React.ReactElement;
+}
+
+// Example
+const customRenderer: ResultRenderer = ({ result, isExecuting }) => {
+  if (isExecuting) {
+    return <Spinner label="Processing..." />;
+  }
+  
+  return (
+    <Box flexDirection="column">
+      <Text color={result.success ? 'green' : 'red'}>
+        {result.success ? '✓' : '✗'} {result.output}
+      </Text>
+    </Box>
+  );
+};
+```
+
+### Form Components
+
+```typescript
+import { Form, FormInput, FormSelect, FormToggle } from '@ziggler/clanker/ui';
+
+<Form onSubmit={handleSubmit}>
+  <FormInput
+    name="path"
+    label="File Path"
+    placeholder="/path/to/file"
+    required
+  />
+  
+  <FormSelect
+    name="format"
+    label="Output Format"
+    options={['json', 'yaml', 'toml']}
+    default="json"
+  />
+  
+  <FormToggle
+    name="verbose"
+    label="Verbose Output"
+    default={false}
+  />
+</Form>
+```
+
+## Error Handling
+
+### Error Types
+
+```typescript
+class ToolExecutionError extends Error {
+  constructor(
+    public toolId: string,
+    public args: any,
+    public cause: Error
+  );
+}
+
+class ConfirmationCancelledError extends Error {
+  constructor(public toolId: string);
+}
+
+class TokenLimitError extends Error {
+  constructor(
+    public used: number,
+    public limit: number
+  );
+}
+```
+
+### Error Handling Patterns
+
+```typescript
+// In tools
+try {
+  const result = await riskyOperation();
+  return { success: true, output: result };
+} catch (error) {
+  return {
+    success: false,
+    error: error.message,
+    details: error.stack,
+    suggestion: 'Try checking file permissions'
+  };
+}
+
+// In agent
+agent.on('error', (error) => {
+  if (error instanceof TokenLimitError) {
+    // Handle token limit
+  } else if (error instanceof ToolExecutionError) {
+    // Handle tool failure
+  }
+});
+```
+
+## Testing Tools
+
+### Unit Testing
+
+```typescript
+import { createTestRegistry } from '@ziggler/clanker/testing';
+
+describe('MyTool', () => {
+  it('should process input correctly', async () => {
+    const registry = createTestRegistry();
+    const tool = require('./my-tool').default;
+    
+    registry.register(tool);
+    
+    const result = await registry.execute('my_tool', {
+      input: 'test'
+    });
+    
+    expect(result.success).toBe(true);
+    expect(result.output).toBe('expected output');
+  });
+});
+```
+
+### Integration Testing
+
+```typescript
+import { createTestAgent } from '@ziggler/clanker/testing';
+
+describe('Tool Integration', () => {
+  it('should work with agent', async () => {
+    const agent = createTestAgent({
+      tools: ['my_tool', 'read_file']
+    });
+    
+    const response = await agent.chat([
+      { role: 'user', content: 'Use my tool on test.txt' }
+    ]);
+    
+    expect(response).toContain('processed');
+  });
+});
+```
+
+## Advanced Usage
+
+### Custom Providers
+
+```typescript
+import { AIProvider } from '@ziggler/clanker';
+
+class CustomProvider implements AIProvider {
+  async complete(
+    messages: Message[],
+    options: CompletionOptions
+  ): Promise<CompletionResult> {
+    // Custom implementation
+  }
+  
+  async stream(
+    messages: Message[],
+    options: StreamOptions,
+    onChunk: (chunk: any) => void
+  ): Promise<void> {
+    // Custom streaming implementation
+  }
+}
+```
+
+### Middleware
+
+```typescript
+registry.use({
+  name: 'timing-middleware',
+  pre: async (context, next) => {
+    context.startTime = Date.now();
+    return next();
+  },
+  post: async (context, result, next) => {
+    const duration = Date.now() - context.startTime;
+    console.log(`${context.toolId}: ${duration}ms`);
+    return next();
+  }
+});
+```
+
+### Custom Confirmations
+
+```typescript
+const customConfirmation: ConfirmationService = {
+  async requestConfirmation(request: ConfirmationRequest): Promise<boolean> {
+    // Custom UI implementation
+    return await showCustomDialog(request);
+  }
+};
+```
+
+## Performance Considerations
+
+### Token Optimization
+
+```typescript
+// Configure token limits
+const agent = new GrokAgent({
+  maxTokens: 4000,
+  maxCompletionTokens: 1000,
+  truncationStrategy: 'sliding-window'
+});
+
+// Monitor usage
+agent.on('token-count', ({ input, output, total }) => {
+  console.log(`Tokens used: ${total}`);
+});
+```
+
+### Tool Execution Optimization
+
+```typescript
+// Parallel execution
+const results = await registry.executeMany([
+  { toolId: 'read_file', args: { path: 'file1.txt' } },
+  { toolId: 'read_file', args: { path: 'file2.txt' } },
+  { toolId: 'read_file', args: { path: 'file3.txt' } }
+]);
+
+// Cached execution
+const cachedTool = createTool()
+  .id('expensive_operation')
+  .cache({ ttl: 3600 }) // Cache for 1 hour
+  .execute(async () => {
+    // Expensive computation
+  });
+```
+
+## Security
+
+### Input Sanitization
+
+```typescript
+// Built-in path traversal protection
+const sanitizedPath = sanitizePath(userInput);
+
+// Command injection protection
+const sanitizedCommand = escapeShellArg(userCommand);
+```
+
+### Permission Checks
+
+```typescript
+// File system permissions
+const canWrite = await checkWritePermission(path);
+if (!canWrite) {
+  throw new PermissionError('Cannot write to system directories');
+}
+```
+
+### API Key Management
+
+```typescript
+// Never log sensitive data
+logger.info('Using API key:', maskApiKey(apiKey));
+// Output: "Using API key: sk-...abc123"
+```# Clanker Architecture
+
+This document provides a technical deep dive into Clanker's architecture, design decisions, and implementation details.
+
+## Overview
+
+Clanker is built as a modular, extensible system with clear separation of concerns:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                   Terminal UI (React/Ink)               │
+├─────────────────────────────────────────────────────────┤
+│                    State Management (Valtio)            │
+├─────────────────────────────────────────────────────────┤
+│                      Agent System                       │
+│  ┌─────────────┐  ┌──────────────┐  ┌────────────────┐  │
+│  │   Client    │  │   Registry   │  │   Executor     │  │
+│  │  (API calls)│  │ (Tool mgmt)  │  │ (Tool runner)  │  │
+│  └─────────────┘  └──────────────┘  └────────────────┘  │
+├─────────────────────────────────────────────────────────┤
+│                      Tool System                        │
+│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌───────────┐   │
+│  │  File   │  │  Bash   │  │ Search  │  │  Custom   │   │
+│  │  Tools  │  │  Tool   │  │  Tool   │  │   Tools   │   │
+│  └─────────┘  └─────────┘  └─────────┘  └───────────┘   │
+└─────────────────────────────────────────────────────────┘
+```
+
+## Core Components
+
+### 1. Entry Point (`src/index.ts`)
+
+The main entry point handles:
+- CLI argument parsing via Commander.js
+- Configuration loading (env vars, settings files, CLI args)
+- Mode selection (interactive vs headless)
+- React app initialization for interactive mode
+
+Key design decision: Single binary that can run both interactively and headless.
+
+### 2. Agent System (`src/clanker/`)
+
+#### GrokAgent (`agent.ts`)
+
+The central orchestrator that:
+- Manages conversations with the AI model
+- Handles tool execution flows
+- Tracks token usage
+- Emits events for UI updates
+
+```typescript
+class GrokAgent extends EventEmitter {
+    private client: GrokClient;
+    private registry: ToolRegistry;
+    private tokenCounter: TokenCounter;
+    
+    async chat(messages: GrokMessage[], streaming?: boolean): Promise<string | void>
+}
+```
+
+#### GrokClient (`client.ts`)
+
+Abstracts API communication:
+- Supports multiple providers (OpenAI, Anthropic, etc.)
+- Handles streaming responses
+- Manages rate limiting and retries
+
+### 3. Registry System (`src/registry/`)
+
+The registry pattern enables dynamic tool management:
+
+```typescript
+interface ToolRegistry {
+    register(tool: Tool): void;
+    get(id: string): Tool | undefined;
+    list(): Tool[];
+    execute(id: string, args: any): Promise<ToolResult>;
+}
+```
+
+Key features:
+- Dynamic tool loading from filesystem
+- Tool validation and schema enforcement
+- Execution tracking and statistics
+- Retry logic for failed executions
+
+### 4. Tool System (`src/tools/dynamic/`)
+
+Tools are self-contained modules with:
+- TypeScript/TSX implementation
+- Clear input/output contracts
+- Built-in UI rendering capabilities
+- Error handling
+
+Example tool structure:
+```typescript
+export default createTool({
+    id: 'read_file',
+    name: 'Read File',
+    description: 'Read contents of a file',
+    inputSchema: z.object({
+        path: z.string().describe('File path to read')
+    }),
+    execute: async ({ path }) => {
+        const content = await fs.readFile(path, 'utf-8');
+        return { success: true, output: content };
+    }
+});
+```
+
+### 5. State Management (`src/store/`)
+
+Valtio-based reactive state management:
+
+```typescript
+const store = proxy({
+    messages: [],
+    currentStage: 'chat',
+    settings: {},
+    executions: [],
+    // ... more state
+});
+```
+
+Benefits:
+- Simple, proxy-based API
+- React integration via `useSnapshot`
+- Works outside React components
+- Mutation tracking for debugging
+
+### 6. UI System (`src/ui/`)
+
+React-based terminal UI using Ink:
+
+```
+AppContainer
+├── StageRouter (manages screens)
+├── ChatScreen
+│   ├── MessageList
+│   ├── InputArea
+│   └── StatusBar
+├── SettingsScreen
+├── ConfirmationModal
+└── ... other screens
+```
+
+Key patterns:
+- Functional components with hooks
+- Custom hooks for business logic
+- Form handling with custom Form component
+- Keyboard navigation support
+
+## Key Design Patterns
+
+### 1. Tool as Interface
+
+Every capability is expressed as a tool:
+- Consistent interface for all operations
+- AI can discover and use tools dynamically
+- Users can extend functionality without modifying core
+
+### 2. Registry Pattern
+
+Dynamic registration enables:
+- Runtime tool discovery
+- Plugin-like extensibility
+- Hot reloading during development
+
+### 3. Event-Driven Updates
+
+Agent emits events for:
+- Streaming content chunks
+- Tool execution status
+- Token usage updates
+
+UI subscribes to events for real-time feedback.
+
+### 4. Confirmation Flow
+
+Safety-first approach:
+- Destructive operations require confirmation
+- Settings for "don't ask again"
+- Override via CLI flags
+
+### 5. Error Recovery
+
+Multi-level error handling:
+- Tool-level try/catch
+- Registry-level retry logic
+- Agent-level fallback strategies
+- UI-level error display
+
+## Technical Innovations
+
+### Order-Invariant Diff Algorithm
+
+Located in `src/utils/order-invariant-apply.ts`:
+
+```typescript
+function orderInvariantApply(originalContent: string, diffs: Diff[]): {
+    content: string;
+    results: DiffResult[];
+}
+```
+
+Key insights:
+1. Sort diffs by position (reverse order)
+2. Apply from end to beginning (preserves positions)
+3. Handle overlapping changes
+4. Support multiple diff formats
+
+### Multi-Format Support
+
+The edit tools support various formats:
+- Unified diff patches
+- Search/replace pairs
+- Marker-based sections (`<<<<<<<` / `>>>>>>>`)
+- Direct content arrays
+
+### Streaming Architecture
+
+Efficient handling of AI responses:
+- Parse streaming chunks in real-time
+- Update UI incrementally
+- Handle tool calls mid-stream
+- Maintain conversation context
+
+## Extension Points
+
+### Custom Tools
+
+Add tools by creating files in `.clanker/tools/`:
+
+```typescript
+// ~/.clanker/tools/my-tool.ts
+export default createTool({
+    id: 'my_tool',
+    // ... tool definition
+});
+```
+
+### Custom Providers
+
+Add AI providers by implementing the client interface:
+
+```typescript
+class CustomProvider implements AIProvider {
+    async complete(messages: Message[]): Promise<Response> {
+        // ... implementation
+    }
+}
+```
+
+### UI Extensions
+
+Add screens by:
+1. Creating component in `src/ui/screens/`
+2. Adding to `StageRouter`
+3. Updating stage management in store
+
+## Performance Considerations
+
+### Token Management
+
+- Count tokens before sending to API
+- Track usage across conversation
+- Warn when approaching limits
+- Prune old messages if needed
+
+### Tool Execution
+
+- Parallel execution where possible
+- Timeout handling for long operations
+- Progress reporting for multi-step tools
+- Caching for repeated operations
+
+### UI Responsiveness
+
+- Debounced input handling
+- Virtual scrolling for long lists
+- Lazy loading of file contents
+- Efficient diff rendering
+
+## Security Considerations
+
+### File System Access
+
+- Path validation to prevent traversal
+- Read permissions check
+- Confirmation for writes
+- No access outside working directory
+
+### Command Execution
+
+- Command sanitization
+- Timeout enforcement
+- Resource limits
+- Confirmation for destructive commands
+
+### API Key Management
+
+- Never logged or displayed
+- Stored in user config with permissions
+- Environment variable support
+- Per-project overrides
+
+## Future Architecture Directions
+
+### Planned Enhancements
+
+1. **Tool Composition**: Define tools that compose other tools
+2. **Async Tool Execution**: Better handling of long-running operations
+3. **Tool Versioning**: Support multiple versions of tools
+4. **Remote Tools**: Execute tools on remote systems
+5. **Tool Marketplace**: Share and discover community tools
+
+### Scaling Considerations
+
+As Clanker grows:
+- Move to worker threads for tool execution
+- Implement tool sandboxing
+- Add distributed execution support
+- Create tool dependency management
+
+## Conclusion
+
+Clanker's architecture prioritizes:
+- **Extensibility**: Easy to add new capabilities
+- **Safety**: Confirmations and validations throughout
+- **Performance**: Efficient execution and UI updates
+- **Developer Experience**: Clear patterns and good defaults
+
+The modular design ensures that each component can evolve independently while maintaining clean interfaces between systems.# Jarvis AI - Business Plan
+*Your Complete AI Assistant Ecosystem*
+
+## Executive Summary
+
+**Vision:** Create the world's most comprehensive AI assistant platform that seamlessly integrates across consumer, business, and smart home environments - bringing the Jarvis experience from fiction to reality.
+
+**Mission:** Empower individuals and organizations with intelligent, proactive AI assistance that anticipates needs, automates tasks, and enhances human capability across all aspects of life and work.
+
+**Key Value Proposition:** Unlike fragmented AI solutions, Jarvis AI offers a unified ecosystem that learns from all user interactions to provide increasingly personalized and powerful assistance across every domain.
+
+## Market Opportunity
+
+### Total Addressable Market (TAM): $2.8 Trillion by 2030
+- **Consumer AI Assistants:** $45B (growing 25% annually)
+- **Enterprise AI Solutions:** $1.8T (growing 35% annually) 
+- **Smart Home Automation:** $290B (growing 22% annually)
+- **AI Productivity Tools:** $650B (growing 30% annually)
+
+### Market Timing
+- AI adoption accelerating post-ChatGPT breakthrough
+- Increasing demand for integrated vs. siloed solutions
+- Growing comfort with AI in personal and professional settings
+- Hardware capabilities finally matching software ambitions
+
+## Product Strategy
+
+### Phase 1: Foundation (Months 1-18)
+**Core AI Engine Development**
+- Advanced natural language processing
+- Multi-modal AI (voice, text, vision)
+- Personal learning and adaptation algorithms
+- Privacy-first architecture
+
+### Phase 2: Consumer Launch (Months 12-30)
+**Jarvis Personal Assistant**
+- Mobile and desktop applications
+- Voice-activated smart home integration
+- Calendar, email, and task management
+- Personal productivity optimization
+
+### Phase 3: Business Expansion (Months 24-42)
+**Jarvis Enterprise Suite**
+- Workflow automation and optimization
+- Meeting assistance and transcription
+- Data analysis and reporting
+- Team collaboration enhancement
+
+### Phase 4: Ecosystem Completion (Months 36-60)
+**Jarvis Connected Platform**
+- IoT device integration and control
+- Advanced predictive assistance
+- Cross-platform synchronization
+- Third-party developer API
+
+## Business Model
+
+### Revenue Streams
+
+1. **Subscription Tiers**
+   - Personal: $9.99/month (basic AI assistance)
+   - Pro: $29.99/month (advanced features + smart home)
+   - Family: $49.99/month (up to 6 users)
+
+2. **Enterprise Licensing**
+   - Starter: $50/user/month (small teams)
+   - Business: $150/user/month (advanced features)
+   - Enterprise: Custom pricing (full platform access)
+
+3. **Hardware Partnerships**
+   - Revenue share with smart home device manufacturers
+   - Branded Jarvis hub device (premium tier)
+
+4. **Developer Platform**
+   - API access fees
+   - App store revenue sharing (30% cut)
+
+### 5-Year Financial Projections
+
+| Year | Revenue | Users | Gross Margin |
+|------|---------|-------|--------------|
+| 1    | $2M     | 50K   | 65%          |
+| 2    | $15M    | 400K  | 70%          |
+| 3    | $75M    | 1.5M  | 75%          |
+| 4    | $200M   | 3.2M  | 78%          |
+| 5    | $500M   | 6M    | 80%          |
+
+## Competitive Analysis
+
+### Direct Competitors
+- **Amazon Alexa:** Strong smart home, weak personalization
+- **Google Assistant:** Great search integration, privacy concerns
+- **Apple Siri:** Ecosystem lock-in, limited third-party integration
+- **Microsoft Cortana:** Enterprise focus, consumer retreat
+
+### Competitive Advantages
+1. **Unified Experience:** Single AI across all contexts vs. fragmented solutions
+2. **True Learning:** Continuously improving personal AI vs. static responses
+3. **Privacy-First:** On-device processing where possible vs. cloud dependency
+4. **Proactive Intelligence:** Anticipates needs vs. reactive responses
+5. **Developer Ecosystem:** Open platform vs. walled gardens
+
+## Technology Stack
+
+### Core AI Infrastructure
+- **Large Language Models:** Custom-trained on conversation and task data
+- **Computer Vision:** Real-time environment understanding
+- **Edge Computing:** Local processing for privacy and speed
+- **Knowledge Graphs:** Personal and professional context mapping
+
+### Platform Architecture
+- **Cloud-Native:** Scalable microservices architecture
+- **Multi-Platform:** iOS, Android, Windows, macOS, Linux, Web
+- **API-First:** Extensible platform for third-party integrations
+- **Security:** End-to-end encryption, zero-knowledge architecture
+
+## Go-to-Market Strategy
+
+### Phase 1: Early Adopters (Months 1-12)
+- **Target:** Tech enthusiasts and productivity power users
+- **Strategy:** Beta program, influencer partnerships
+- **Channels:** Product Hunt, tech conferences, social media
+
+### Phase 2: Consumer Market (Months 12-30)
+- **Target:** Busy professionals and smart home enthusiasts
+- **Strategy:** Content marketing, referral programs
+- **Channels:** App stores, retail partnerships, digital advertising
+
+### Phase 3: Enterprise Sales (Months 24-48)
+- **Target:** Mid-market and enterprise businesses
+- **Strategy:** Direct sales, channel partnerships
+- **Channels:** Sales team, system integrators, consultants
+
+## Team & Organization
+
+### Founding Team Needs
+- **CEO/Co-founder:** Business leadership and vision
+- **CTO/Co-founder:** AI/ML technical leadership
+- **Head of Product:** User experience and product strategy
+- **Head of Engineering:** Platform architecture and development
+
+### Key Hires (First 18 Months)
+- Senior AI/ML Engineers (5-8)
+- Mobile/Web Developers (4-6)
+- DevOps/Infrastructure (2-3)
+- Data Scientists (3-4)
+- UX/UI Designers (2-3)
+- Sales & Marketing (3-5)
+
+### Advisory Board
+- AI/ML industry veterans
+- Former executives from Amazon/Google/Apple
+- Privacy and security experts
+- Enterprise software leaders
+
+## Funding Requirements
+
+### Series A: $15M (Months 1-18)
+- **Use:** Core team, MVP development, initial market testing
+- **Milestones:** Working prototype, 10K beta users, product-market fit signals
+
+### Series B: $50M (Months 18-36)
+- **Use:** Product scaling, enterprise development, market expansion
+- **Milestones:** 100K paying users, enterprise pilot customers, platform API
+
+### Series C: $150M (Months 36-60)
+- **Use:** Global expansion, acquisition opportunities, advanced R&D
+- **Milestones:** 1M+ users, $50M+ ARR, market leadership position
+
+## Risk Analysis & Mitigation
+
+### Technical Risks
+- **AI Model Performance:** Continuous training and optimization programs
+- **Privacy Regulations:** Privacy-by-design architecture
+- **Scalability Challenges:** Cloud-native, microservices approach
+
+### Market Risks
+- **Big Tech Competition:** Focus on differentiation and user experience
+- **Economic Downturn:** Freemium model to maintain user base
+- **Regulatory Changes:** Compliance-first development approach
+
+### Operational Risks
+- **Talent Acquisition:** Competitive compensation and equity packages
+- **Customer Acquisition Costs:** Organic growth and referral programs
+- **Data Security:** Best-in-class security practices and audits
+
+## Success Metrics & KPIs
+
+### User Engagement
+- Daily/Monthly Active Users
+- Session duration and frequency
+- Feature adoption rates
+- Net Promoter Score (NPS)
+
+### Business Metrics
+- Monthly Recurring Revenue (MRR)
+- Customer Acquisition Cost (CAC)
+- Lifetime Value (LTV)
+- Churn rate by segment
+
+### Technical Metrics
+- AI response accuracy and speed
+- Platform uptime and reliability
+- API adoption and usage
+- Privacy compliance scores
+
+## Implementation Timeline
+
+### Months 1-6: Foundation
+- Secure Series A funding
+- Build core team
+- Develop MVP architecture
+- Begin AI model training
+
+### Months 7-12: Alpha Development
+- Complete core AI engine
+- Build consumer mobile app
+- Launch closed alpha program
+- Validate product-market fit
+
+### Months 13-18: Beta Launch
+- Public beta release
+- Smart home integrations
+- Enterprise pilot program
+- Series B fundraising
+
+### Months 19-30: Market Entry
+- Full consumer product launch
+- Enterprise sales program
+- Developer platform beta
+- International expansion planning
+
+### Months 31-42: Scale & Expand
+- Enterprise platform launch
+- Advanced AI capabilities
+- Strategic partnerships
+- Series C preparation
+
+### Months 43-60: Market Leadership
+- Global market expansion
+- Acquisition opportunities
+- Advanced R&D initiatives
+- IPO preparation
+
+## Conclusion
+
+Jarvis AI represents a transformational opportunity to create the world's first truly comprehensive AI assistant platform. With the right team, technology, and execution, we can build the AI companion that enhances human potential across every aspect of life and work.
+
+The convergence of advanced AI capabilities, growing market demand, and our unique unified approach positions Jarvis AI to become the dominant platform in the multi-trillion dollar AI assistance market.
+
+**Next Steps:**
+1. Validate key assumptions through market research
+2. Begin assembling founding team
+3. Develop detailed technical architecture
+4. Create investor pitch deck and begin fundraising
+5. Establish initial partnerships and pilot customers# Rachet Build Pipeline Design
+
+## Overview
+This document details the automated build pipeline for clanker tools, from source submission to published registry entry.
+
+## Pipeline Architecture
+
+```mermaid
+graph LR
+    A[PR Submitted] --> B[Validation]
+    B --> C[Build & Bundle]
+    C --> D[Integration Test]
+    D --> E[Create Staging Branch]
+    E --> F[PR Review]
+    F --> G[Merge to Main]
+    G --> H[Publish to Registry]
+    H --> I[Archive Staging]
+```
+
+## Build Configuration
+
+### 1. Tool Source Structure
+```
+submissions/
+└── org-name/
+    └── tool-name/
+        ├── package.json          # Tool metadata and scripts
+        ├── src/
+        │   └── index.ts         # Tool implementation
+        ├── README.md            # Tool documentation
+        └── examples/            # Usage examples
+```
+
+### 2. Package.json Format
+```json
+{
+  "name": "@org/tool-name",
+  "version": "1.0.0",
+  "description": "Tool description",
+  "main": "src/index.ts",
+  "author": {
+    "name": "Author Name",
+    "email": "email@example.com"
+  },
+  "repository": "https://github.com/user/tool",
+  "clanker": {
+    "category": "System",
+    "capabilities": ["SystemExecute", "UserConfirmation"],
+    "tags": ["bash", "shell"],
+    "minVersion": "0.1.33"
+  },
+  "peerDependencies": {
+    "@ziggler/clanker": "*",
+    "react": "*",
+    "ink": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/react": "^19.0.0"
+  }
+}
+```
+
+### 3. Build Script Implementation
+
+```javascript
+// scripts/build-tool.js
+const esbuild = require('esbuild');
+const fs = require('fs-extra');
+const path = require('path');
+const crypto = require('crypto');
+
+async function buildTool(submissionPath, outputPath) {
+  const packageJson = await fs.readJson(path.join(submissionPath, 'package.json'));
+  
+  // Extract metadata from package.json and source
+  const metadata = await extractMetadata(submissionPath, packageJson);
+  
+  // Bundle the tool
+  const result = await esbuild.build({
+    entryPoints: [path.join(submissionPath, 'src/index.ts')],
+    bundle: true,
+    format: 'cjs',
+    platform: 'node',
+    target: 'node16',
+    external: [
+      'react',
+      'ink',
+      '@ziggler/clanker',
+      'fs',
+      'path',
+      'child_process',
+      'util',
+      'os',
+      'crypto'
+    ],
+    outfile: path.join(outputPath, 'index.js'),
+    metafile: true,
+    minify: true,
+    sourcemap: false,
+    plugins: [
+      preserveMetadataPlugin(metadata)
+    ]
+  });
+  
+  // Generate manifest
+  const manifest = {
+    id: metadata.id,
+    name: metadata.name,
+    description: metadata.description,
+    version: packageJson.version,
+    author: packageJson.author,
+    repository: packageJson.repository,
+    category: packageJson.clanker.category,
+    capabilities: packageJson.clanker.capabilities,
+    tags: packageJson.clanker.tags,
+    dependencies: {
+      external: Object.keys(packageJson.peerDependencies || {}),
+      bundled: Object.keys(packageJson.dependencies || {})
+    },
+    clankerVersion: packageJson.clanker.minVersion,
+    buildInfo: {
+      date: new Date().toISOString(),
+      builder: 'esbuild',
+      sourceHash: await hashDirectory(submissionPath),
+      bundleSize: result.metafile.outputs['index.js'].bytes,
+      originalSize: await getDirectorySize(submissionPath)
+    }
+  };
+  
+  await fs.writeJson(path.join(outputPath, 'manifest.json'), manifest, { spaces: 2 });
+  
+  return manifest;
+}
+
+// Plugin to ensure metadata is preserved in the bundle
+function preserveMetadataPlugin(metadata) {
+  return {
+    name: 'preserve-metadata',
+    setup(build) {
+      build.onEnd(async (result) => {
+        if (result.errors.length > 0) return;
+        
+        // Append metadata preservation code
+        const bundlePath = build.initialOptions.outfile;
+        let content = await fs.readFile(bundlePath, 'utf8');
+        
+        // Ensure the exported tool has all metadata
+        content += `
+// Preserve tool metadata
+if (module.exports && module.exports.default) {
+  const tool = module.exports.default;
+  if (!tool.category) tool.category = ${JSON.stringify(metadata.category)};
+  if (!tool.capabilities) tool.capabilities = ${JSON.stringify(metadata.capabilities)};
+  if (!tool.tags) tool.tags = ${JSON.stringify(metadata.tags)};
+}
+`;
+        
+        await fs.writeFile(bundlePath, content);
+      });
+    }
+  };
+}
+```
+
+### 4. Integration Test Script
+
+```javascript
+// scripts/test-integration.js
+const { exec } = require('child_process');
+const fs = require('fs-extra');
+const path = require('path');
+const os = require('os');
+
+async function testToolIntegration(toolPath, manifest) {
+  const testDir = path.join(os.tmpdir(), `clanker-test-${Date.now()}`);
+  
+  try {
+    // 1. Clone latest clanker
+    await execAsync(`git clone https://github.com/zigglers/clanker ${testDir}/clanker`);
+    
+    // 2. Install dependencies
+    await execAsync('npm install', { cwd: `${testDir}/clanker` });
+    
+    // 3. Create test .clanker directory
+    const toolsDir = path.join(testDir, '.clanker/tools', manifest.author.name, manifest.id, manifest.version);
+    await fs.ensureDir(toolsDir);
+    
+    // 4. Copy tool files
+    await fs.copy(toolPath, toolsDir);
+    
+    // 5. Run clanker with list-tools
+    const { stdout } = await execAsync(
+      `HOME=${testDir} npm run dev -- --list-tools`,
+      { cwd: `${testDir}/clanker` }
+    );
+    
+    // 6. Verify tool appears
+    if (!stdout.includes(manifest.id)) {
+      throw new Error(`Tool ${manifest.id} not found in list-tools output`);
+    }
+    
+    // 7. Test basic tool execution
+    const testResult = await execAsync(
+      `HOME=${testDir} npm run dev -- -p "test ${manifest.id} tool"`,
+      { cwd: `${testDir}/clanker`, timeout: 30000 }
+    );
+    
+    return {
+      success: true,
+      output: stdout,
+      testResult: testResult.stdout
+    };
+    
+  } finally {
+    // Cleanup
+    await fs.remove(testDir);
+  }
+}
+```
+
+### 5. GitHub Actions Workflow
+
+```yaml
+# .github/workflows/tool-submission.yml
+name: Tool Submission Pipeline
+
+on:
+  pull_request:
+    paths:
+      - 'submissions/**'
+
+jobs:
+  validate-and-build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+      
+      - name: Get changed files
+        id: files
+        uses: jitterbit/get-changed-files@v1
+      
+      - name: Extract tool info
+        id: tool-info
+        run: |
+          # Parse the submission path to get org/tool
+          TOOL_PATH=$(echo "${{ steps.files.outputs.all }}" | grep -E "^submissions/[^/]+/[^/]+/" | head -1)
+          ORG=$(echo $TOOL_PATH | cut -d'/' -f2)
+          TOOL=$(echo $TOOL_PATH | cut -d'/' -f3)
+          VERSION=$(cat $TOOL_PATH/package.json | jq -r .version)
+          
+          echo "org=$ORG" >> $GITHUB_OUTPUT
+          echo "tool=$TOOL" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "path=$TOOL_PATH" >> $GITHUB_OUTPUT
+          echo "branch=$ORG/$TOOL@$VERSION" >> $GITHUB_OUTPUT
+      
+      - name: Validate tool structure
+        run: |
+          node scripts/validate-tool.js ${{ steps.tool-info.outputs.path }}
+      
+      - name: Build tool
+        run: |
+          mkdir -p build-output
+          node scripts/build-tool.js ${{ steps.tool-info.outputs.path }} build-output
+      
+      - name: Test integration
+        run: |
+          node scripts/test-integration.js build-output manifest.json
+      
+      - name: Create staging branch
+        if: success()
+        run: |
+          git config user.name "Clanker Bot"
+          git config user.email "bot@clanker.dev"
+          
+          # Create and checkout staging branch
+          git checkout -b ${{ steps.tool-info.outputs.branch }}
+          
+          # Copy built files to registry location
+          mkdir -p tools/${{ steps.tool-info.outputs.org }}/${{ steps.tool-info.outputs.tool }}/${{ steps.tool-info.outputs.version }}
+          cp build-output/* tools/${{ steps.tool-info.outputs.org }}/${{ steps.tool-info.outputs.tool }}/${{ steps.tool-info.outputs.version }}/
+          
+          # Commit and push
+          git add tools/
+          git commit -m "Built tool: ${{ steps.tool-info.outputs.org }}/${{ steps.tool-info.outputs.tool }}@${{ steps.tool-info.outputs.version }}"
+          git push origin ${{ steps.tool-info.outputs.branch }}
+      
+      - name: Comment on PR
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const output = `
+            ## 🎉 Tool Build Successful!
+            
+            **Tool**: \`${{ steps.tool-info.outputs.org }}/${{ steps.tool-info.outputs.tool }}@${{ steps.tool-info.outputs.version }}\`
+            **Staging Branch**: \`${{ steps.tool-info.outputs.branch }}\`
+            
+            ### Test Results ✅
+            - Structure validation: Passed
+            - Build process: Successful
+            - Integration test: Tool detected in clanker
+            
+            ### Next Steps
+            1. Review the built tool in the staging branch
+            2. Test experimental installation:
+               \`\`\`bash
+               clanker --enable-experimental
+               clanker --install ${{ steps.tool-info.outputs.org }}/${{ steps.tool-info.outputs.tool }}@${{ steps.tool-info.outputs.branch }}
+               \`\`\`
+            3. Approve and merge this PR to publish to the main registry
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            });
+
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Run security scan
+        run: |
+          # Add security scanning tools here
+          npm audit
+          # Check for dangerous patterns
+          node scripts/security-check.js ${{ steps.tool-info.outputs.path }}
+```
+
+### 6. Post-Merge Workflow
+
+```yaml
+# .github/workflows/registry-update.yml
+name: Registry Update
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+jobs:
+  publish-tool:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Extract tool info from PR
+        id: tool-info
+        run: |
+          # Extract from PR body or labels
+          echo "branch=${{ github.event.pull_request.head.ref }}" >> $GITHUB_OUTPUT
+      
+      - name: Merge staging to registry
+        run: |
+          # Copy from staging branch to main
+          git fetch origin ${{ steps.tool-info.outputs.branch }}
+          git checkout ${{ steps.tool-info.outputs.branch }}
+          
+          # Copy tool files
+          cp -r tools/* ../main-tools/
+          
+          git checkout main
+          cp -r ../main-tools/* tools/
+          
+          # Update registry.json
+          node scripts/update-registry.js
+          
+          git add .
+          git commit -m "Published tool from ${{ steps.tool-info.outputs.branch }}"
+          git push
+      
+      - name: Archive staging branch
+        run: |
+          git push origin :${{ steps.tool-info.outputs.branch }}
+          git tag archive/${{ steps.tool-info.outputs.branch }}
+          git push origin archive/${{ steps.tool-info.outputs.branch }}
+```
+
+## Package Manager Integration
+
+### 1. Experimental Tools Support
+
+```typescript
+// src/package-manager/experimental.ts
+export class ExperimentalToolManager {
+  async fetchExperimentalTools(): Promise<ExperimentalTool[]> {
+    // Fetch branches matching pattern org/tool@version
+    const branches = await this.fetchGitHubBranches();
+    return branches
+      .filter(branch => branch.match(/^[^/]+\/[^/]+@[\d.]+$/))
+      .map(branch => this.parseBranchToTool(branch));
+  }
+  
+  async installExperimental(toolSpec: string): Promise<void> {
+    // Check if it's a PR reference
+    if (toolSpec.includes('@pr-')) {
+      const prNumber = toolSpec.split('@pr-')[1];
+      const branch = await this.getBranchFromPR(prNumber);
+      toolSpec = branch;
+    }
+    
+    // Download from staging branch
+    const toolUrl = `${this.repoUrl}/tree/${toolSpec}/tools/...`;
+    await this.downloadAndInstall(toolUrl);
+    
+    // Mark as experimental in local manifest
+    await this.markAsExperimental(toolSpec);
+  }
+  
+  async upgradeToStable(): Promise<void> {
+    const experimental = await this.getInstalledExperimental();
+    
+    for (const tool of experimental) {
+      const stableVersion = await this.checkIfStable(tool);
+      if (stableVersion) {
+        await this.upgrade(tool, stableVersion);
+      }
+    }
+  }
+}
+```
+
+### 2. CLI Integration
+
+```typescript
+// Update src/commands/package.ts
+.option('--enable-experimental', 'Enable installation of experimental tools')
+.option('--list-experimental', 'List available experimental tools')
+.option('--upgrade-experimental', 'Upgrade experimental tools to stable versions')
+```
+
+## Benefits
+
+1. **Quality Assurance**: Every tool is tested before publishing
+2. **Experimentation**: Users can test tools before they're merged
+3. **Traceability**: Full history of tool versions and changes
+4. **Automation**: Minimal manual intervention required
+5. **Security**: Automated scanning and validation
+
+## Implementation Timeline
+
+1. Week 1: Build scripts and basic workflow
+2. Week 2: Integration testing and staging branches
+3. Week 3: Package manager experimental support
+4. Week 4: Migration of existing tools# Rachet Repository Migration Plan
+
+## Overview
+This document outlines the migration strategy for transforming the rachet repository into a modern, CI/CD-driven tool registry with automatic building, testing, and publishing.
+
+## Current State vs Target State
+
+### Current State
+- Tools are pre-bundled and stored in the repository
+- Minimal metadata in separate JSON files
+- No automated testing or validation
+- Manual process for adding tools
+- Loss of tool metadata during bundling
+
+### Target State
+- Source-based tool submissions via PR
+- Automated build, test, and publish pipeline
+- Full metadata preservation
+- Branch-based staging for unmerged tools
+- Support for experimental/testing tools
+- Shared dependency resolution
+
+## Migration Steps
+
+### Phase 1: Repository Structure (Week 1)
+
+1. **Create new repository structure**:
+   ```
+   rachet/
+   ├── .github/
+   │   ├── workflows/
+   │   │   ├── tool-submission.yml    # Main CI/CD workflow
+   │   │   ├── tool-validation.yml    # PR validation
+   │   │   └── registry-update.yml    # Post-merge registry update
+   │   └── PULL_REQUEST_TEMPLATE/
+   │       └── tool_submission.md
+   ├── submissions/                    # Source tool submissions
+   │   └── README.md
+   ├── tools/                         # Published tools (auto-generated)
+   │   └── .gitkeep
+   ├── scripts/
+   │   ├── build-tool.js             # Tool bundling script
+   │   ├── validate-tool.js          # Tool validation
+   │   ├── test-integration.js       # E2E testing with clanker
+   │   └── publish-tool.js           # Publishing to registry
+   ├── templates/
+   │   ├── tool-template/            # Starter template
+   │   └── manifest.schema.json      # Manifest schema
+   └── README.md
+   ```
+
+2. **Archive current tools** in a `legacy/` directory for reference
+
+3. **Create tool submission guidelines** and templates
+
+### Phase 2: Build Pipeline (Week 1-2)
+
+1. **Tool Bundling Script** (`scripts/build-tool.js`):
+   - Use esbuild or rollup for bundling
+   - Mark React, Ink, and @ziggler/clanker as external
+   - Preserve all metadata from builder pattern
+   - Generate manifest.json with full metadata
+   - Output single bundled JS file
+
+2. **Manifest Format**:
+   ```json
+   {
+     "id": "tool-id",
+     "name": "Tool Name",
+     "description": "Tool description",
+     "version": "1.0.0",
+     "author": {
+       "name": "Author Name",
+       "email": "email@example.com",
+       "github": "username"
+     },
+     "repository": "https://github.com/user/tool",
+     "category": "System",
+     "capabilities": ["SystemExecute", "UserConfirmation"],
+     "tags": ["bash", "shell", "command"],
+     "dependencies": {
+       "external": ["react", "ink", "@ziggler/clanker"],
+       "bundled": {}
+     },
+     "clankerVersion": ">=0.1.33",
+     "buildInfo": {
+       "date": "2025-01-01T00:00:00Z",
+       "builder": "esbuild",
+       "sourceHash": "abc123...",
+       "size": 12345
+     }
+   }
+   ```
+
+3. **Validation Script** (`scripts/validate-tool.js`):
+   - Verify tool exports correct structure
+   - Check all required metadata present
+   - Validate dependencies
+   - Run basic smoke tests
+
+### Phase 3: CI/CD Workflow (Week 2)
+
+1. **PR Submission Workflow**:
+   ```yaml
+   name: Tool Submission
+   on:
+     pull_request:
+       paths:
+         - 'submissions/**'
+   
+   jobs:
+     validate:
+       - Lint source code
+       - Check tool structure
+       - Verify metadata completeness
+     
+     build:
+       - Bundle tool with build script
+       - Generate manifest.json
+       - Upload artifacts
+     
+     test:
+       - Clone latest clanker
+       - Install tool to temp directory
+       - Run integration tests
+       - Verify tool appears in --list-tools
+     
+     staging:
+       - Create branch: org/toolname@version
+       - Commit bundled tool + manifest
+       - Comment on PR with test results
+   ```
+
+2. **Post-Merge Workflow**:
+   - Move tool from staging branch to main registry
+   - Update registry.json
+   - Archive staging branch
+   - Trigger CDN/cache refresh
+
+### Phase 4: Package Manager Updates (Week 2-3)
+
+1. **Add experimental tool support**:
+   ```bash
+   # New CLI flags
+   clanker --enable-experimental        # Enable experimental tools
+   clanker --install org/tool@pr-123    # Install from PR
+   clanker --list-experimental          # List available experimental tools
+   ```
+
+2. **Update RegistryClient** to:
+   - Fetch from staging branches when experimental mode enabled
+   - Track which tools are experimental vs stable
+   - Handle upgrades from experimental to stable
+
+3. **Add configuration option**:
+   ```json
+   {
+     "experimental": {
+       "enabled": false,
+       "autoUpgrade": true,  // Auto-upgrade experimental to stable
+       "sources": ["pull-requests", "branches"]
+     }
+   }
+   ```
+
+### Phase 5: Tool Migration (Week 3-4)
+
+1. **Migrate core tools** (bash, pwd, list, etc.):
+   - Extract source from current clanker codebase
+   - Create proper tool packages with full metadata
+   - Submit as PRs to test the pipeline
+   - Verify all metadata preserved
+
+2. **Create migration guide** for community tools
+
+3. **Deprecation timeline** for old tool format
+
+## Success Criteria
+
+1. All 14 core tools migrated with full metadata
+2. CI/CD pipeline successfully builds and tests tools
+3. Experimental tools can be installed and tested
+4. No regression in tool functionality
+5. Clear documentation for tool authors
+
+## Timeline
+
+- Week 1: Repository structure and build scripts
+- Week 2: CI/CD implementation
+- Week 3: Package manager updates
+- Week 4: Tool migration and testing
+- Week 5: Documentation and community outreach
+
+## Risks and Mitigations
+
+1. **Risk**: Breaking existing tool installations
+   - **Mitigation**: Maintain backward compatibility during transition
+
+2. **Risk**: Complex CI/CD may discourage contributions  
+   - **Mitigation**: Provide clear templates and documentation
+
+3. **Risk**: Performance impact from metadata
+   - **Mitigation**: Optimize manifest format and loading
+
+## Next Steps
+
+1. Create the new repository structure
+2. Implement the build pipeline
+3. Set up GitHub Actions workflows
+4. Begin migrating core tools# Getting Started with Clanker
+
+This guide will help you install, configure, and start using Clanker for AI-powered development assistance.
+
+## Installation
+
+### Global Installation (Recommended)
+
+```bash
+npm install -g @ziggler/clanker
+```
+
+### Using npx (No Installation)
+
+```bash
+npx @ziggler/clanker
+```
+
+### From Source
+
+```bash
+git clone https://github.com/zigglers/clanker.git
+cd clanker
+npm install
+npm run build
+npm link  # Makes 'clanker' available globally
+```
+
+## Configuration
+
+Clanker supports multiple configuration methods, in order of precedence:
+
+### 1. Command Line Arguments
+
+```bash
+clanker --api-key YOUR_API_KEY --model grok-3-latest
+```
+
+### 2. Environment Variables
+
+```bash
+export CLANKER_API_KEY="your-api-key"
+export CLANKER_BASE_URL="https://api.openai.com/v1"  # Optional
+export CLANKER_MODEL="grok-3-latest"  # Optional
+```
+
+### 3. User Settings File
+
+Create `~/.clanker/user-settings.json`:
+
+```json
+{
+  "apiKey": "your-api-key",
+  "provider": "grok",
+  "model": "grok-3-latest",
+  "theme": "dark",
+  "autoEditEnabled": false,
+  "confirmationSettings": {
+    "fileOperations": true,
+    "bashCommands": true
+  }
+}
+```
+
+### 4. Project-Specific Instructions
+
+Create `CLAUDE.md` in your project root to provide context-specific instructions:
+
+```markdown
+# Project Context
+
+This is a TypeScript project using React and Vite.
+
+## Coding Standards
+- Use functional components with hooks
+- Prefer named exports
+- Follow existing patterns for state management
+```
+
+## First Run
+
+### Interactive Mode
+
+Simply run:
+
+```bash
+clanker
+```
+
+On first run, Clanker will:
+1. Display a welcome animation
+2. Prompt for API configuration if not set
+3. Launch the interactive chat interface
+
+### Headless Mode
+
+For scripting or CI/CD:
+
+```bash
+clanker --prompt "analyze all TypeScript files and find unused imports"
+```
+
+## Basic Commands
+
+### In Interactive Mode
+
+- **Enter**: Send message
+- **Ctrl+C**: Clear input (press twice to exit)
+- **↑/↓**: Navigate message history
+- **Tab**: Autocomplete (when available)
+- **Ctrl+N**: New chat
+- **Ctrl+S**: Open settings
+
+### Command Line Options
+
+```bash
+clanker --help                    # Show all options
+clanker --list-tools              # List available tools
+clanker --debug                   # Enable debug logging
+clanker --no-confirmations        # Skip all confirmations (use with caution)
+```
+
+## Core Concepts
+
+### Tools
+
+Clanker operates through "tools" - discrete capabilities the AI can use:
+
+- **read_file**: Read file contents
+- **write_to_file**: Write or create files
+- **multi_edit**: Advanced file editing with diff support
+- **bash**: Execute shell commands
+- **search**: Find files or content using ripgrep
+- **create_todo_list**: Task management
+
+### Confirmation System
+
+By default, Clanker asks for confirmation before:
+- Writing or modifying files
+- Executing shell commands
+- Deleting files
+
+You can:
+- Approve individual operations
+- Use "Don't ask again" for trusted operations
+- Disable globally with `--no-confirmations` (not recommended)
+
+### Multi-Provider Support
+
+Clanker works with various AI providers:
+
+**Grok (Default)**:
+```bash
+clanker --model grok-3-latest
+```
+
+**OpenAI**:
+```bash
+clanker --base-url https://api.openai.com/v1 --model gpt-4
+```
+
+**Anthropic** (via proxy):
+```bash
+clanker --provider anthropic --model claude-3-opus-20240229
+```
+
+**Local Models** (Ollama, LM Studio):
+```bash
+clanker --base-url http://localhost:11434/v1 --model llama2
+```
+
+## Common Use Cases
+
+### Code Refactoring
+
+```
+You: Refactor all console.log statements to use our logger utility
+```
+
+### Bug Investigation
+
+```
+You: Find all TypeScript files with unused imports and remove them
+```
+
+### Project Setup
+
+```
+You: Set up a new React component with TypeScript, tests, and stories
+```
+
+### Documentation
+
+```
+You: Generate API documentation for all public methods in src/
+```
+
+## Tips for Effective Use
+
+1. **Be Specific**: Instead of "fix the bug", try "fix the TypeScript error in auth.ts line 45"
+
+2. **Provide Context**: Clanker reads your CLANKER.md file, so document project-specific patterns there
+
+3. **Use Confirmations**: Review changes before applying them, especially for complex operations
+
+4. **Check Progress**: Clanker shows what tools it's using in real-time
+
+5. **Iterative Refinement**: If results aren't perfect, provide feedback and iterate
+
+## Troubleshooting
+
+### API Key Issues
+
+```
+Error: API key required
+```
+
+**Solution**: Set your API key using one of the configuration methods above.
+
+### Permission Errors
+
+```
+Error: EACCES: permission denied
+```
+
+**Solution**: Check file permissions or run with appropriate privileges.
+
+### Tool Execution Failures
+
+Clanker will show which tool failed and why. Common causes:
+- File not found
+- Syntax errors in generated code
+- Command not available in PATH
+
+### Performance
+
+For large operations:
+- Use specific file paths instead of wildcards when possible
+- Break complex tasks into smaller steps
+- Monitor token usage in debug mode
+
+## Next Steps
+
+- Explore [Architecture](architecture.md) to understand how Clanker works
+- Learn to create custom tools in [Tool Development](tools.md)
+- Check the [API Reference](api.md) for advanced usage
+
+## Getting Help
+
+- **Issues**: [GitHub Issues](https://github.com/zigglers/clanker/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/zigglers/clanker/discussions)
+- **Updates**: Watch the [repository](https://github.com/zigglers/clanker) for updates# Clanker Hook System
+
+The Clanker Hook System (introduced in v0.3.0) provides a powerful event-driven architecture for extending and customizing Clanker's behavior. Hooks allow tools, users, and integrations to react to various events during Clanker's execution lifecycle.
+
+## Overview
+
+Hooks are event handlers that can:
+- Monitor and audit tool execution
+- Modify tool arguments before execution
+- Block certain operations based on custom logic
+- Transform messages before they're processed
+- Chain multiple tools together
+- Add custom context to sessions
+- Integrate with external systems
+
+## Hook Events
+
+### Tool Lifecycle Events
+
+#### PreToolUse
+Fired before any tool is executed. Can inspect, modify, or block tool execution.
+
+```typescript
+interface PreToolUseInput {
+  session_id: string;
+  tool_name: string;
+  tool_input: ToolArguments;
+}
+```
+
+Use cases:
+- Security auditing
+- Input validation
+- Rate limiting
+- Argument transformation
+
+#### PostToolUse
+Fired after a tool completes execution. Can process or transform results.
+
+```typescript
+interface PostToolUseInput {
+  session_id: string;
+  tool_name: string;
+  tool_input: ToolArguments;
+  tool_response: ToolResult;
+}
+```
+
+Use cases:
+- Result caching
+- Error tracking
+- Performance monitoring
+- Result enhancement
+
+### Message Lifecycle Events
+
+#### PreMessage
+Fired before messages are added to the conversation history.
+
+```typescript
+interface PreMessageInput {
+  session_id: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+}
+```
+
+Use cases:
+- Content filtering
+- Message transformation
+- Context injection
+
+#### PostMessage
+Fired after messages are processed and stored.
+
+```typescript
+interface PostMessageInput {
+  session_id: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  messageId: string;
+}
+```
+
+Use cases:
+- Message logging
+- Analytics
+- Notifications
+
+### Session Events
+
+#### SessionStart
+Fired when a new session begins or an existing session is resumed.
+
+```typescript
+interface SessionStartInput {
+  session_id: string;
+  source: 'startup' | 'resume' | 'clear';
+}
+```
+
+Use cases:
+- Session initialization
+- Context restoration
+- Welcome messages
+
+#### UserPromptSubmit
+Fired when the user submits a prompt.
+
+```typescript
+interface UserPromptSubmitInput {
+  session_id: string;
+  prompt: string;
+}
+```
+
+Use cases:
+- Prompt enhancement
+- Command interception
+- Usage tracking
+
+## Hook Types
+
+### 1. Command Hooks
+Execute shell commands in response to events.
+
+```json
+{
+  "type": "command",
+  "command": "echo 'Tool ${TOOL_NAME} executed' >> audit.log",
+  "timeout": 30
+}
+```
+
+Environment variables available:
+- `CLAUDE_PROJECT_DIR`: Current working directory
+- All hook input fields as environment variables
+
+### 2. Function Hooks
+Execute TypeScript/JavaScript functions.
+
+```json
+{
+  "type": "function",
+  "function": "./hooks/my-hook.js",
+  "timeout": 60
+}
+```
+
+Function signature:
+```typescript
+export default async function(
+  input: HookInput, 
+  context: HookContext
+): Promise<HookOutput> {
+  // Hook implementation
+  return { continue: true };
+}
+```
+
+### 3. Tool Hooks
+Execute other Clanker tools as hooks.
+
+```json
+{
+  "type": "tool",
+  "toolId": "ziggle-dev/logger",
+  "args": {
+    "level": "info"
+  }
+}
+```
+
+## Hook Configuration
+
+### Configuration Files
+Hooks can be configured in multiple locations (in order of precedence):
+
+1. `.clanker/settings.local.json` - Local project overrides (gitignored)
+2. `.clanker/settings.json` - Project-specific hooks
+3. `~/.clanker/settings.json` - User global hooks
+
+### Configuration Format
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "bash|exec",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'Executing ${TOOL_NAME}' >> ~/.clanker/audit.log"
+          }
+        ]
+      }
+    ],
+    "PostMessage": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "function",
+            "function": "~/.clanker/hooks/message-logger.js"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+### Matcher Patterns
+- `"*"` - Match all events
+- `"bash"` - Exact match
+- `"bash|exec|shell"` - Match any of these
+- `"^test-.*"` - Regex pattern
+
+## Dynamic Hook Registration
+
+Tools can register hooks programmatically at runtime:
+
+```typescript
+// In your tool implementation
+export default async function(args: ToolArguments, context: ToolContext) {
+  // Register a hook dynamically
+  context.hooks.register({
+    id: 'my-dynamic-hook',
+    name: 'My Dynamic Hook',
+    description: 'Monitors file changes',
+    event: HookEvent.PostToolUse,
+    matcher: 'write-to-file|multi-edit',
+    handler: async (input, context) => {
+      // Log file modifications
+      if (input.tool_name === 'write-to-file') {
+        await context.callTool('logger', {
+          message: `File written: ${input.tool_input.file_path}`
+        });
+      }
+      return { continue: true };
+    }
+  });
+  
+  // Your tool logic...
+}
+```
+
+## Hook Output Format
+
+### Basic Output
+```typescript
+interface HookOutput {
+  continue?: boolean;        // Whether to continue execution (default: true)
+  stopReason?: string;      // Reason for stopping
+  suppressOutput?: boolean; // Suppress hook output from logs
+}
+```
+
+### Enhanced Output (AI-Interpretable)
+```typescript
+interface EnhancedHookOutput extends HookOutput {
+  // Structured data for AI interpretation
+  data?: any;
+  
+  // Suggestions for the AI
+  suggestions?: string[];
+  
+  // Modified tool arguments (PreToolUse only)
+  modifiedArgs?: ToolArguments;
+  
+  // Chain additional tools
+  chainTools?: Array<{
+    toolId: string;
+    args: ToolArguments;
+    condition?: string; // AI-evaluable condition
+  }>;
+  
+  // Context updates
+  contextUpdates?: {
+    add?: Record<string, any>;
+    remove?: string[];
+    modify?: Record<string, any>;
+  };
+  
+  // Message transformation (message hooks only)
+  transformedContent?: string;
+  
+  // Priority for AI consideration (0-100)
+  priority?: number;
+  
+  // Natural language instructions for AI
+  aiInstructions?: string;
+}
+```
+
+## Hook Context
+
+Hooks receive a context object with utilities:
+
+```typescript
+interface HookContext {
+  // Tool execution
+  callTool: (toolId: string, args: ToolArguments) => Promise<ToolResult>;
+  
+  // Session data
+  getSessionData: (key: string) => any;
+  setSessionData: (key: string, value: any) => void;
+  
+  // Message access
+  getAllMessages: () => Message[];
+  getLastMessage: (role?: string) => Message;
+  
+  // File system
+  readFile: (path: string) => Promise<string>;
+  writeFile: (path: string, content: string) => Promise<void>;
+  
+  // Environment
+  env: {
+    projectDir: string;
+    cwd: string;
+    platform: string;
+    sessionId: string;
+  };
+}
+```
+
+## Examples
+
+### Security Auditing Hook
+
+```javascript
+// ~/.clanker/hooks/security-audit.js
+export default async function(input, context) {
+  const dangerousCommands = ['rm', 'delete', 'drop'];
+  const tool = input.tool_name;
+  
+  if (tool === 'bash') {
+    const command = input.tool_input.command;
+    
+    // Check for dangerous commands
+    for (const dangerous of dangerousCommands) {
+      if (command.includes(dangerous)) {
+        await context.writeFile(
+          `${context.env.projectDir}/.clanker/security.log`,
+          `BLOCKED: Dangerous command attempted: ${command}\n`,
+          { flag: 'a' }
+        );
+        
+        return {
+          continue: false,
+          stopReason: `Command contains dangerous operation: ${dangerous}`,
+          aiInstructions: 'Please use a safer alternative or ask for confirmation.'
+        };
+      }
+    }
+  }
+  
+  return { continue: true };
+}
+```
+
+### Tool Chaining Hook
+
+```javascript
+// Automatically format code after file edits
+export default async function(input, context) {
+  if (input.tool_name === 'write-to-file' || input.tool_name === 'multi-edit') {
+    const filePath = input.tool_input.file_path;
+    
+    if (filePath.endsWith('.js') || filePath.endsWith('.ts')) {
+      return {
+        continue: true,
+        chainTools: [{
+          toolId: 'bash',
+          args: {
+            command: `prettier --write "${filePath}"`
+          }
+        }],
+        aiInstructions: 'Code has been automatically formatted with Prettier.'
+      };
+    }
+  }
+  
+  return { continue: true };
+}
+```
+
+### Message Enhancement Hook
+
+```javascript
+// Add context to user messages
+export default async function(input, context) {
+  if (input.role === 'user') {
+    const lastTool = context.getSessionData('lastToolUsed');
+    
+    if (lastTool) {
+      return {
+        continue: true,
+        transformedContent: `${input.content}\n\n[Context: Last tool used was ${lastTool}]`,
+        contextUpdates: {
+          add: {
+            messageEnhanced: true,
+            enhancementTime: new Date().toISOString()
+          }
+        }
+      };
+    }
+  }
+  
+  return { continue: true };
+}
+```
+
+## Best Practices
+
+1. **Performance**: Keep hooks lightweight and fast
+2. **Error Handling**: Always handle errors gracefully
+3. **Timeouts**: Set reasonable timeouts (default: 60s)
+4. **Side Effects**: Minimize side effects in hooks
+5. **Documentation**: Document your hooks clearly
+6. **Testing**: Test hooks in isolation before deployment
+
+## Tool Integration
+
+Tools can leverage the hook system for extended functionality:
+
+```typescript
+// Tool that monitors all file changes
+export default async function(args: ToolArguments, context: ToolContext) {
+  // Register a monitoring hook
+  context.hooks.register({
+    id: 'file-monitor',
+    name: 'File Change Monitor',
+    event: HookEvent.PostToolUse,
+    matcher: 'write-to-file|multi-edit|remove',
+    handler: async (input, hookContext) => {
+      // Store file change history
+      const history = hookContext.getSessionData('fileHistory') || [];
+      history.push({
+        tool: input.tool_name,
+        file: input.tool_input.file_path,
+        timestamp: new Date().toISOString()
+      });
+      hookContext.setSessionData('fileHistory', history);
+      
+      return { continue: true };
+    }
+  });
+  
+  // Tool can now access file history
+  const history = context.hooks.getSessionData('fileHistory') || [];
+  return {
+    success: true,
+    data: { 
+      message: `Monitoring ${history.length} file changes this session`
+    }
+  };
+}
+```
+
+## Migration Guide
+
+For tool developers migrating to use the hook system:
+
+1. Replace file watchers with PostToolUse hooks
+2. Replace input validation with PreToolUse hooks
+3. Use session data instead of global variables
+4. Leverage hook chaining instead of manual tool calls
+5. Use contextUpdates for state management
+
+## Security Considerations
+
+1. Command hooks run with user privileges
+2. Function hooks can access the file system
+3. Tool hooks can execute any installed tool
+4. Always validate and sanitize hook inputs
+5. Use matcher patterns to limit hook scope
+6. Consider using read-only hooks for monitoring
+
+## Future Enhancements
+
+Planned improvements to the hook system:
+- Hook marketplace for sharing hooks
+- Visual hook editor
+- Hook debugging tools
+- Performance profiling
+- Hook versioning and dependencies# Migration Guide: Clanker v0.3.0
+
+This guide helps tool developers migrate their tools to take advantage of Clanker v0.3.0's new features: the Hook System and Session Management.
+
+## Overview of Changes
+
+### New Features in v0.3.0
+1. **Hook System**: Event-driven architecture for extending Clanker
+2. **Session Management**: Persistent conversation and context tracking
+3. **Enhanced Tool Context**: New properties and capabilities
+4. **Local Tool Installation**: `--local` flag for development
+5. **Tool Dependencies**: Automatic dependency resolution
+
+### Breaking Changes
+- None! v0.3.0 is fully backward compatible
+
+## Tool Context Enhancements
+
+### Old Context (v0.2.x)
+```typescript
+interface ToolContext {
+  logger?: Logger;
+  store: MessageStore;
+  registry: ToolRegistry;
+}
+```
+
+### New Context (v0.3.0)
+```typescript
+interface ToolContext {
+  logger?: Logger;
+  store: MessageStore;
+  registry: ToolRegistry;
+  hooks: HookAPI;        // NEW: Hook system access
+  tools: ToolRegistry;   // NEW: Alias for registry
+  session: SessionManager; // NEW: Session management
+}
+```
+
+## Migration Patterns
+
+### 1. Migrating from File Watchers to Hooks
+
+**Before (v0.2.x):**
+```typescript
+// Old approach using file watchers
+export default async function(args, context) {
+  const watcher = fs.watch('.', (event, filename) => {
+    if (filename.endsWith('.js')) {
+      console.log(`File changed: ${filename}`);
+    }
+  });
+  
+  // Tool logic...
+  
+  watcher.close();
+  return { success: true };
+}
+```
+
+**After (v0.3.0):**
+```typescript
+// New approach using hooks
+export default async function(args, context) {
+  // Register a hook to monitor file changes
+  context.hooks.register({
+    id: 'file-monitor',
+    name: 'File Change Monitor',
+    event: HookEvent.PostToolUse,
+    matcher: 'write-to-file|multi-edit',
+    handler: async (input, hookContext) => {
+      if (input.tool_input.file_path?.endsWith('.js')) {
+        console.log(`File changed: ${input.tool_input.file_path}`);
+      }
+      return { continue: true };
+    }
+  });
+  
+  // Tool logic...
+  
+  return { success: true };
+}
+```
+
+### 2. Migrating from Global State to Session Data
+
+**Before (v0.2.x):**
+```typescript
+// Old approach using global variables
+let toolExecutionCount = 0;
+
+export default async function(args, context) {
+  toolExecutionCount++;
+  
+  return {
+    success: true,
+    data: { count: toolExecutionCount }
+  };
+}
+```
+
+**After (v0.3.0):**
+```typescript
+// New approach using session data
+export default async function(args, context) {
+  // Get session data
+  const count = context.session.getContext('toolExecutionCount') || 0;
+  const newCount = count + 1;
+  
+  // Update session data
+  context.session.updateContext('toolExecutionCount', newCount);
+  
+  return {
+    success: true,
+    data: { count: newCount }
+  };
+}
+```
+
+### 3. Migrating from Manual Tool Calls to Hook Chaining
+
+**Before (v0.2.x):**
+```typescript
+// Old approach with manual tool execution
+export default async function(args, context) {
+  // Write file
+  const result = await context.registry.execute('write-to-file', {
+    file_path: 'output.txt',
+    content: 'Hello World'
+  });
+  
+  if (result.success) {
+    // Format the file
+    await context.registry.execute('bash', {
+      command: 'prettier --write output.txt'
+    });
+  }
+  
+  return result;
+}
+```
+
+**After (v0.3.0):**
+```typescript
+// New approach with hook chaining
+export default async function(args, context) {
+  // Write file with automatic formatting via hooks
+  const result = await context.tools.execute('write-to-file', {
+    file_path: 'output.txt',
+    content: 'Hello World'
+  });
+  
+  // Hook automatically chains prettier command
+  return {
+    ...result,
+    chainTools: [{
+      toolId: 'bash',
+      args: { command: 'prettier --write output.txt' }
+    }]
+  };
+}
+```
+
+### 4. Migrating API Key Storage
+
+**Before (v0.2.x):**
+```typescript
+// Old approach with hardcoded or env vars
+const API_KEY = process.env.MY_TOOL_API_KEY || 'hardcoded-key';
+
+export default async function(args, context) {
+  if (!API_KEY) {
+    return { success: false, error: 'API key not set' };
+  }
+  
+  // Use API key...
+}
+```
+
+**After (v0.3.0):**
+```typescript
+// New approach with settings management
+import { getToolSettings, saveToolSettings } from './settings';
+
+async function getApiKey(context) {
+  const settings = await getToolSettings();
+  
+  if (!settings?.apiKey) {
+    // Use input tool to prompt user
+    const result = await context.tools.execute('input', {
+      prompt: 'Please enter your API key:',
+      password: true
+    });
+    
+    if (result.success) {
+      await saveToolSettings({ apiKey: result.output });
+      return result.output;
+    }
+  }
+  
+  return settings.apiKey;
+}
+
+export default async function(args, context) {
+  const apiKey = await getApiKey(context);
+  if (!apiKey) {
+    return { success: false, error: 'API key required' };
+  }
+  
+  // Use API key...
+}
+```
+
+## Declaring Tool Dependencies
+
+Add dependencies to your `package.json`:
+
+```json
+{
+  "name": "@yourorg/your-tool",
+  "version": "1.0.0",
+  "clanker": {
+    "dependencies": {
+      "ziggle-dev/input": ">=1.0.0",
+      "ziggle-dev/bash": ">=1.0.0"
+    }
+  }
+}
+```
+
+Dependencies are automatically installed when your tool is installed.
+
+## Using the Hook System
+
+### Registering Hooks in Your Tool
+
+```typescript
+export default async function(args: ToolArguments, context: ToolContext) {
+  // Register a hook to enhance functionality
+  context.hooks.register({
+    id: `${context.tool.name}-enhancer`,
+    name: 'Tool Enhancer',
+    event: HookEvent.PreToolUse,
+    handler: async (input, hookContext) => {
+      // Add context before tool execution
+      return {
+        continue: true,
+        contextUpdates: {
+          add: { enhancedBy: context.tool.name }
+        }
+      };
+    }
+  });
+  
+  // Your tool logic...
+}
+```
+
+### Hook Event Reference
+
+```typescript
+enum HookEvent {
+  PreToolUse = 'PreToolUse',      // Before tool execution
+  PostToolUse = 'PostToolUse',     // After tool execution
+  PreMessage = 'PreMessage',       // Before message processing
+  PostMessage = 'PostMessage',     // After message processing
+  SessionStart = 'SessionStart',   // Session initialization
+  UserPromptSubmit = 'UserPromptSubmit' // User input
+}
+```
+
+## Using Session Management
+
+### Accessing Session Data
+
+```typescript
+export default async function(args: ToolArguments, context: ToolContext) {
+  // Get session metadata
+  const metadata = context.session.getMetadata();
+  console.log(`Session: ${metadata.id}, Created: ${metadata.created}`);
+  
+  // Access message history
+  const messages = context.session.getMessages();
+  const lastUserMessage = messages
+    .filter(m => m.role === 'user')
+    .pop();
+  
+  // Store tool-specific data
+  context.session.updateContext('myTool', {
+    lastRun: new Date(),
+    configuration: args
+  });
+  
+  // Retrieve stored data
+  const previousRun = context.session.getContext('myTool');
+  
+  return {
+    success: true,
+    data: {
+      sessionId: metadata.id,
+      messageCount: messages.length,
+      previousRun
+    }
+  };
+}
+```
+
+### Exporting Session Data
+
+```typescript
+// Export current session as transcript
+const transcriptPath = await context.session.exportTranscript();
+console.log(`Session exported to: ${transcriptPath}`);
+```
+
+## Local Development Workflow
+
+### 1. Set Up Your Tool
+
+```bash
+# Create tool directory
+mkdir my-tool
+cd my-tool
+
+# Initialize package.json
+npm init
+
+# Install Clanker types
+npm install --save-dev @ziggler/clanker
+```
+
+### 2. Develop with Hot Reload
+
+```bash
+# Install your tool locally
+clanker install --local .
+
+# Make changes and reinstall
+clanker install --local . --force
+```
+
+### 3. Test with Hooks
+
+```typescript
+// test-hook.js
+export default async function(input, context) {
+  console.log(`Hook fired: ${input.hook_event_name}`);
+  return { continue: true };
+}
+```
+
+```json
+// .clanker/settings.json
+{
+  "hooks": {
+    "PreToolUse": [{
+      "matcher": "*",
+      "hooks": [{
+        "type": "function",
+        "function": "./test-hook.js"
+      }]
+    }]
+  }
+}
+```
+
+## Best Practices
+
+### 1. Hook Registration
+- Register hooks early in tool execution
+- Use unique hook IDs to avoid conflicts
+- Unregister hooks when no longer needed
+- Handle hook errors gracefully
+
+### 2. Session Data
+- Store only serializable data
+- Use meaningful keys for context
+- Clean up large data after use
+- Document your data structure
+
+### 3. Tool Dependencies
+- Declare all required dependencies
+- Use version ranges for flexibility
+- Test with minimum versions
+- Document dependency usage
+
+### 4. Error Handling
+```typescript
+export default async function(args, context) {
+  try {
+    // Tool logic with new features
+    const apiKey = await getApiKey(context);
+    
+    context.hooks.register({
+      id: 'error-handler',
+      name: 'Error Handler',
+      event: HookEvent.PostToolUse,
+      handler: async (input) => {
+        if (!input.tool_response.success) {
+          // Log errors to session
+          context.session.updateContext('errors', [
+            ...(context.session.getContext('errors') || []),
+            {
+              tool: input.tool_name,
+              error: input.tool_response.error,
+              time: new Date()
+            }
+          ]);
+        }
+        return { continue: true };
+      }
+    });
+    
+    // Tool implementation...
+    
+  } catch (error) {
+    // Always return proper error structure
+    return {
+      success: false,
+      error: error.message || 'Unknown error occurred'
+    };
+  }
+}
+```
+
+## Common Migration Scenarios
+
+### Scenario 1: Audio/Visual Tools
+Replace file-based hooks with the hook system:
+
+```typescript
+// Before: Writing to .clanker/hooks/message
+// After: Register PostMessage hook
+context.hooks.register({
+  id: 'audio-processor',
+  event: HookEvent.PostMessage,
+  handler: async (input) => {
+    if (input.role === 'assistant') {
+      await processAudio(input.content);
+    }
+    return { continue: true };
+  }
+});
+```
+
+### Scenario 2: Monitoring Tools
+Use session data for state tracking:
+
+```typescript
+// Track all tool executions in session
+context.hooks.register({
+  id: 'execution-monitor',
+  event: HookEvent.PostToolUse,
+  handler: async (input, hookContext) => {
+    const stats = hookContext.getSessionData('toolStats') || {};
+    stats[input.tool_name] = (stats[input.tool_name] || 0) + 1;
+    hookContext.setSessionData('toolStats', stats);
+    return { continue: true };
+  }
+});
+```
+
+### Scenario 3: Integration Tools
+Chain tools together intelligently:
+
+```typescript
+// Automatically run related tools
+return {
+  success: true,
+  data: result,
+  chainTools: [
+    {
+      toolId: 'formatter',
+      args: { file: outputFile },
+      condition: 'if file is code'
+    },
+    {
+      toolId: 'notifier',
+      args: { message: 'Task complete' }
+    }
+  ]
+};
+```
+
+## Testing Your Migration
+
+### 1. Unit Testing Hooks
+```typescript
+// test/hooks.test.js
+import { HookContext, HookInput } from '@ziggler/clanker';
+
+describe('MyTool Hooks', () => {
+  it('should process messages correctly', async () => {
+    const mockInput: HookInput = {
+      hook_event_name: 'PostMessage',
+      session_id: 'test-session',
+      role: 'assistant',
+      content: 'Test message'
+    };
+    
+    const mockContext: HookContext = {
+      // Mock context implementation
+    };
+    
+    const result = await myHook(mockInput, mockContext);
+    expect(result.continue).toBe(true);
+  });
+});
+```
+
+### 2. Integration Testing
+```bash
+# Test with local installation
+clanker install --local .
+
+# Run test commands
+clanker -p "Test my tool"
+
+# Check session data
+clanker -p "Show session info"
+```
+
+## Troubleshooting
+
+### Hook Not Firing
+1. Check hook registration succeeded
+2. Verify matcher pattern matches
+3. Ensure correct event type
+4. Check for errors in hook handler
+
+### Session Data Lost
+1. Verify auto-save is enabled
+2. Check write permissions
+3. Look for session files in ~/.clanker/sessions/
+4. Ensure graceful shutdown
+
+### Tool Dependencies Not Installing
+1. Check dependency format in package.json
+2. Verify tool names are correct
+3. Try manual installation first
+4. Check network connectivity
+
+## Support
+
+- **Documentation**: [Clanker Docs](https://github.com/zigglers/clanker/docs)
+- **Hook System Guide**: [docs/hooks.md](./hooks.md)
+- **Session Guide**: [docs/sessions.md](./sessions.md)
+- **Issues**: [GitHub Issues](https://github.com/zigglers/clanker/issues)
+- **Community**: [Discussions](https://github.com/zigglers/clanker/discussions)
+
+## Conclusion
+
+Clanker v0.3.0 provides powerful new capabilities while maintaining backward compatibility. The Hook System and Session Management enable new patterns for tool development:
+
+- **Event-driven architecture** replaces polling and watching
+- **Persistent state** replaces global variables
+- **Tool composition** replaces manual orchestration
+- **Secure configuration** replaces hardcoded secrets
+
+Take advantage of these features to build more powerful, maintainable, and user-friendly tools!# Clanker Package Manager
+
+The Clanker Package Manager is a built-in tool discovery and management system that makes it easy to extend Clanker's capabilities with community-created tools.
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Installing Tools](#installing-tools)
+- [Managing Tools](#managing-tools)
+- [Creating Tools](#creating-tools)
+- [Publishing Tools](#publishing-tools)
+- [Repository Management](#repository-management)
+- [Tool Development Workflow](#tool-development-workflow)
+- [Technical Details](#technical-details)
+
+## Overview
+
+The package manager provides:
+- 🔍 **Discovery** - Search and browse available tools
+- 📦 **Installation** - One-command tool installation
+- 🔄 **Updates** - Keep tools up to date
+- 🛠️ **Development** - Hot-reloading for tool creators
+- 🌐 **Publishing** - Share your tools with the community
+- 🏢 **Multi-repo** - Support for private/organizational repositories
+
+## Installing Tools
+
+### Search for Tools
+
+Find tools in the registry:
+
+```bash
+# Search by keyword
+clanker --search "git"
+clanker -S "database"
+
+# Search results show:
+# - Tool name and organization
+# - Description
+# - Latest version
+# - Download stats
+```
+
+### Install a Tool
+
+Install tools by name:
+
+```bash
+# Install latest version
+clanker --install ziggler/core
+clanker -I community/git-tools
+
+# Install specific version
+clanker --install ziggler/core@1.2.0
+clanker -I community/git-tools@0.5.0
+
+# Short format
+clanker -I org/tool-name
+```
+
+### Installation Process
+
+When you install a tool:
+1. Downloads from the tool registry
+2. Verifies checksums for security
+3. Installs to `~/.clanker/tools/org/tool-name/`
+4. Creates version symlink at `current`
+5. Tool is immediately available
+
+## Managing Tools
+
+### List Installed Tools
+
+View all your installed tools:
+
+```bash
+clanker --list-installed
+clanker -L
+
+# Output shows:
+# ✓ ziggler/core@1.0.0
+#   A comprehensive utility toolkit
+#   Installed: 2025-07-25
+# 
+# ✓ community/git-tools@0.5.0
+#   Git workflow automation tools
+#   Installed: 2025-07-24
+```
+
+### Update Tools
+
+Keep tools up to date:
+
+```bash
+# Update specific tool
+clanker --update ziggler/core
+
+# Update checks for new versions and installs if available
+```
+
+### Uninstall Tools
+
+Remove tools you no longer need:
+
+```bash
+clanker --uninstall community/git-tools
+clanker -U community/git-tools
+
+# Removes all versions and cleans up
+```
+
+### Clear Cache
+
+Clean up downloaded packages:
+
+```bash
+clanker --clear-cache
+
+# Removes cached downloads but keeps installed tools
+```
+
+## Creating Tools
+
+### Quick Start
+
+Create a new tool project:
+
+```bash
+npx create-clanker-tool
+```
+
+This interactive wizard will:
+1. Ask for tool name, organization, and description
+2. Let you choose TypeScript or JavaScript
+3. Create a complete project structure
+4. Set up build scripts and dependencies
+
+### Project Structure
+
+```
+my-awesome-tool/
+├── src/                 # Source code (committed to git)
+│   └── index.ts         # Tool implementation
+├── bin/                 # Compiled output (NOT in git)
+│   ├── index.js         # Compiled TypeScript
+│   └── bundle.js        # Bundled tool with dependencies
+├── scripts/
+│   └── install-local.js # Local installation script
+├── package.json         # Dependencies and scripts
+├── tsconfig.json        # TypeScript config
+├── README.md           # Documentation
+└── .gitignore          # Excludes bin/, node_modules/, etc.
+```
+
+**Important**: The `bin/` directory is for local development only and should NOT be committed to git or included in pull requests.
+
+### Development Scripts
+
+Your tool project includes these npm scripts:
+
+```bash
+# Development
+npm run dev              # Run tool directly
+npm run dev:watch        # Build, install, and watch for changes
+
+# Building
+npm run build            # Compile TypeScript
+npm run bundle           # Create minified bundle
+
+# Testing
+npm run install:local    # Install to ~/.clanker/tools for testing
+
+# Publishing
+npm run publish:tool     # Prepare for registry submission
+```
+
+### Tool Structure
+
+A minimal tool looks like:
+
+```javascript
+export default {
+  id: 'my_tool',
+  name: 'My Tool',
+  description: 'What this tool does',
+  
+  execute: async (args, context) => {
+    // Your tool logic here
+    return {
+      success: true,
+      output: 'Tool executed successfully!'
+    };
+  },
+  
+  arguments: [
+    {
+      name: 'input',
+      type: 'string',
+      description: 'Input value',
+      required: true
+    }
+  ]
+};
+```
+
+## Publishing Tools
+
+### Prepare for Publishing
+
+1. **Test thoroughly**: Ensure your tool works correctly
+2. **Build**: Run `npm run build` and `npm run bundle`
+3. **Document**: Update README with usage examples
+4. **Version**: Update version in package.json
+
+### Publish Command
+
+```bash
+npm run publish:tool
+# or
+clanker --publish
+```
+
+This command:
+1. Builds and bundles your tool
+2. Generates a manifest file
+3. Creates a PR template
+4. Opens GitHub for easy submission
+
+### Registry Structure
+
+Tools in the registry follow this structure:
+```
+rachet/
+└── tools/
+    └── your-org/
+        └── your-tool/
+            ├── src/            # Source code (TypeScript/JavaScript)
+            │   └── index.ts    # Tool implementation
+            ├── package.json    # Dependencies and build scripts
+            ├── tsconfig.json   # TypeScript config (if applicable)
+            ├── README.md       # Documentation
+            └── manifest.json   # Auto-generated tool metadata
+```
+
+**Note**: Only source code is stored in the registry. The bin/ directory with compiled files is generated automatically during the CI/CD build process after merge.
+
+### Submission Process
+
+1. Fork [rachet](https://github.com/zigglers/rachet)
+2. Add your tool following the structure above:
+   - Include only source files in `src/`
+   - Include `package.json` with build scripts
+   - Include `README.md` with documentation
+   - Do NOT include `bin/`, `dist/`, or compiled files
+3. Create a pull request with the generated template
+4. Tools are reviewed for:
+   - Source code quality and security
+   - Proper build configuration
+   - Documentation completeness
+5. After merge:
+   - CI/CD automatically builds your tool
+   - Bundled version is distributed to users
+   - Source remains available for transparency
+
+## Repository Management
+
+### Multiple Repositories
+
+Clanker supports multiple tool repositories for:
+- Private organizational tools
+- Testing repositories
+- Alternative registries
+
+### Add a Repository
+
+```bash
+# Add by GitHub URL
+clanker --add-repo "myorg/private-rachet-tools"
+
+# Full URL also works
+clanker --add-repo "https://github.com/myorg/private-tools"
+```
+
+### Remove a Repository
+
+```bash
+clanker --remove-repo "myorg/private-tools"
+```
+
+### List Repositories
+
+```bash
+clanker --list-repos
+
+# Shows:
+# 1. Official Rachet Tools (default)
+#    URL: https://github.com/zigglers/rachet
+#    Status: ✅ Enabled
+# 
+# 2. myorg/private-tools
+#    URL: https://github.com/myorg/private-tools
+#    Status: ✅ Enabled
+```
+
+### Repository Priority
+
+- Tools are searched in repository order
+- First match wins for duplicate tool names
+- Official repository has highest priority by default
+- Edit `~/.clanker/settings.json` to reorder
+
+## Tool Development Workflow
+
+### 1. Bootstrap a Tool
+
+```bash
+npx create-clanker-tool
+cd my-tool
+npm install
+```
+
+### 2. Develop Locally
+
+```bash
+# Edit src/index.ts
+# Test your changes
+npm run build
+npm run install:local
+
+# Verify it loads
+clanker --list-tools | grep my-tool
+```
+
+### 3. Hot Reloading
+
+For rapid development:
+
+```bash
+# Terminal 1: Watch and rebuild
+npm run dev:watch
+
+# Terminal 2: Use Clanker with watch mode
+clanker --watch-tools
+```
+
+Changes to your tool are automatically reloaded!
+
+### 4. Test with Clanker
+
+```bash
+# Test in headless mode
+clanker --prompt "Use my_tool to do something"
+
+# Test interactively
+clanker
+> Use my_tool with input "test"
+```
+
+### 5. Publish
+
+```bash
+npm run publish:tool
+# Follow the instructions to create PR
+```
+
+## Technical Details
+
+### Tool Loading
+
+Tools are discovered and loaded from:
+1. Built-in tools (packaged with Clanker)
+2. `~/.clanker/tools/` directory (recursive)
+3. Package-managed tools with version symlinks
+
+### Version Management
+
+- Each tool version is stored separately
+- `current` symlink points to active version
+- Supports version constraints (^1.0.0, ~1.2.0, etc.)
+
+### Security
+
+- All tools run in Clanker's process
+- Checksums verify package integrity
+- PR review process for registry additions
+- Tools should follow principle of least privilege
+
+### File Watching
+
+With `--watch-tools` flag:
+- Monitors `~/.clanker/tools/` for changes
+- Automatically reloads modified tools
+- Calls cleanup hooks before unloading
+- Uses file hashes to detect changes
+
+### Tool Discovery
+
+Tools are identified by:
+- File extension: `.js`, `.ts`, `.tsx`, `.jsx`
+- Valid tool structure (id, description, execute)
+- Unique ID across all loaded tools
+
+### Performance
+
+- Tools are loaded on startup
+- Lazy initialization for better performance
+- Caching of downloaded packages
+- Parallel tool execution support
+
+## Best Practices
+
+### Tool Development
+
+1. **Use TypeScript**: Better type safety and IDE support
+2. **Handle errors gracefully**: Return error in result, don't throw
+3. **Validate arguments**: Check required args before execution
+4. **Provide examples**: Help users understand usage
+5. **Version semantically**: Follow semver for updates
+6. **Source-only submission**: Never commit bin/ or compiled files
+7. **Build scripts**: Ensure `npm run build` and `npm run bundle` work correctly
+
+### Tool Design
+
+1. **Single purpose**: Each tool should do one thing well
+2. **Composable**: Design tools to work together
+3. **Idempotent**: Running twice should be safe
+4. **Documented**: Clear description and argument docs
+5. **Tested**: Include tests for reliability
+
+### Publishing
+
+1. **Test thoroughly**: In different scenarios
+2. **Document clearly**: README with examples
+3. **Version appropriately**: Breaking changes = major version
+4. **Provide metadata**: Author, keywords, homepage
+5. **Respond to feedback**: Monitor issues and PRs
+
+## Troubleshooting
+
+### Tool Not Loading
+
+```bash
+# Check if tool is installed
+clanker --list-installed
+
+# Check debug output
+clanker --debug --list-tools
+
+# Verify file structure
+ls -la ~/.clanker/tools/
+```
+
+### Installation Failures
+
+```bash
+# Clear cache and retry
+clanker --clear-cache
+clanker --install org/tool
+
+# Check network/permissions
+# Verify GitHub access
+```
+
+### Development Issues
+
+```bash
+# Ensure dependencies installed
+npm install
+
+# Check build output
+npm run build
+
+# Verify bundle creation
+npm run bundle
+ls -la dist/bundle.js
+```
+
+## Examples
+
+### Example: Git Workflow Tool
+
+```typescript
+export default {
+  id: 'git_pr',
+  name: 'Git PR Creator',
+  description: 'Create PR with conventional commits',
+  
+  arguments: [
+    {
+      name: 'title',
+      type: 'string',
+      description: 'PR title',
+      required: true
+    }
+  ],
+  
+  execute: async ({ title }, context) => {
+    // Implementation
+    const branch = await createBranch();
+    await commitChanges();
+    const prUrl = await createPR(title);
+    
+    return {
+      success: true,
+      output: `PR created: ${prUrl}`
+    };
+  }
+};
+```
+
+### Example: Code Generator
+
+```typescript
+export default {
+  id: 'gen_component',
+  name: 'Component Generator',
+  description: 'Generate React component with tests',
+  
+  arguments: [
+    {
+      name: 'name',
+      type: 'string',
+      required: true
+    },
+    {
+      name: 'typescript',
+      type: 'boolean',
+      default: true
+    }
+  ],
+  
+  execute: async ({ name, typescript }, context) => {
+    const ext = typescript ? 'tsx' : 'jsx';
+    
+    // Generate component file
+    await createFile(`${name}.${ext}`, componentTemplate(name));
+    
+    // Generate test file
+    await createFile(`${name}.test.${ext}`, testTemplate(name));
+    
+    return {
+      success: true,
+      output: `Created ${name} component with tests`
+    };
+  }
+};
+```
+
+## FAQ
+
+**Q: Can I install private tools?**  
+A: Yes! Add your private repository with `--add-repo` and install tools normally.
+
+**Q: How do I update all tools at once?**  
+A: Currently, update tools individually. Bulk updates coming soon.
+
+**Q: Can tools depend on npm packages?**  
+A: Yes, but they must be bundled. The bundle should include all dependencies.
+
+**Q: What Node version is required?**  
+A: Tools run in Clanker's Node environment (16+). Use appropriate syntax.
+
+**Q: How do I debug my tool?**  
+A: Use `clanker --debug` to see detailed execution logs.
+
+## Get Involved
+
+- 🐛 [Report issues](https://github.com/zigglers/clanker/issues)
+- 💡 [Suggest features](https://github.com/zigglers/clanker/discussions)
+- 🛠️ [Browse tools](https://github.com/zigglers/rachet)
+- 👥 [Join community](https://github.com/zigglers/clanker/discussions)
+
+---
+
+[← Back to Documentation](../README.md#documentation)# The Clanker Philosophy
+
+## Beyond Suggestions: The Action Engine Paradigm
+
+### The Current State of AI Assistance
+
+Today's AI assistants excel at understanding and generating text. They can explain complex concepts, write code snippets, and offer detailed advice. But there's a fundamental limitation: they exist in a sandbox, separated from the environments where real work happens.
+
+This creates a frustrating workflow:
+1. Ask AI for help
+2. Copy the suggestion
+3. Paste into your editor
+4. Modify for your context
+5. Run and debug
+6. Repeat
+
+**What if we could collapse these steps into one?**
+
+### The Clanker Approach
+
+Clanker represents a paradigm shift from "AI as advisor" to "AI as actor". Instead of generating suggestions, Clanker generates *actions* that can be reviewed, modified, and executed directly.
+
+```
+Traditional AI: "Here's how to refactor this function..."
+Clanker: "I'll refactor this function. Here are the changes I'll make. Approve?"
+```
+
+This seemingly simple shift has profound implications.
+
+## Core Principles
+
+### 1. **Intent to Implementation**
+
+Developers think in terms of intent: "Make this code more readable", "Add error handling", "Update to new API". Clanker bridges the gap between these high-level intentions and low-level file modifications.
+
+### 2. **Trust Through Transparency**
+
+Every action Clanker takes is:
+- **Previewable**: See exactly what will change
+- **Confirmable**: Approve or reject each operation
+- **Traceable**: Full history of what was done and why
+- **Reversible**: Undo capabilities where possible
+
+### 3. **Context-Aware Execution**
+
+Unlike simple find-and-replace, Clanker understands:
+- Code syntax and semantics
+- Project conventions and patterns
+- Dependencies and relationships
+- Potential side effects
+
+### 4. **Progressive Disclosure**
+
+Start simple, go deep when needed:
+- Basic users: Natural language commands
+- Power users: Custom tools and workflows
+- Developers: Full API access and extensibility
+
+## The Tool Philosophy
+
+### Everything is a Tool
+
+In Clanker's world, capabilities are expressed as tools:
+- **Atomic**: Each tool does one thing well
+- **Composable**: Tools can use other tools
+- **Discoverable**: AI can find and use appropriate tools
+- **Extensible**: Anyone can create new tools
+
+### Tools as Contracts
+
+Each tool defines a clear contract:
+```typescript
+{
+  input: "What the tool needs",
+  output: "What the tool produces",
+  sideEffects: "What the tool changes",
+  confirmationRequired: "When to ask permission"
+}
+```
+
+This contract enables:
+- AI to understand tool capabilities
+- Users to trust tool operations
+- Developers to compose tools safely
+
+## The Order-Invariant Insight
+
+### The Problem with Traditional Diffs
+
+Most diff algorithms assume order matters:
+```diff
+- line 10: oldFunction()
++ line 10: newFunction()
+```
+
+But what happens when:
+- Code is refactored and lines move?
+- The same pattern appears multiple times?
+- Indentation changes?
+- Context is crucial for correct replacement?
+
+Traditional approaches fail catastrophically, achieving only 8% success rate in real-world scenarios.
+
+### The Clanker Solution
+
+Clanker's order-invariant algorithm:
+
+1. **Finds all matches** regardless of position
+2. **Analyzes context** to resolve ambiguities
+3. **Applies changes** in reverse order to preserve positions
+4. **Validates results** to ensure correctness
+
+Result: **89% success rate** on the same real-world scenarios.
+
+## Implications for Development
+
+### From Imperative to Declarative
+
+Traditional development is imperative:
+```bash
+# Find files
+grep -r "console.log" src/
+# Open each file
+vim src/file1.js
+# Make changes manually
+# Repeat...
+```
+
+Clanker enables declarative development:
+```
+"Replace all console.log with logger.debug in src/"
+```
+
+### From Local to Global
+
+Humans excel at local changes but struggle with global consistency. AI excels at global analysis but needs human judgment for context.
+
+Clanker combines both strengths:
+- AI: Find all instances, understand patterns
+- Human: Provide context, approve changes
+- Together: Achieve consistent, correct results
+
+### From Sequential to Parallel
+
+Humans work sequentially. Clanker works in parallel:
+- Analyze entire codebase simultaneously
+- Apply multiple changes atomically
+- Run test suites while you review
+- Prepare next steps while you decide
+
+## The Future We're Building
+
+### Conversational Development
+
+Imagine pair programming where your partner can:
+- Instantly understand entire codebases
+- Make consistent changes across thousands of files
+- Never forget project conventions
+- Learn from your feedback
+
+### Ecosystem of Capabilities
+
+As developers create and share tools:
+- Common patterns become reusable tools
+- Domain-specific knowledge gets encoded
+- Best practices spread automatically
+- Development accelerates exponentially
+
+### Beyond Code
+
+The principles apply beyond software:
+- Writing and editing
+- Data analysis and transformation
+- System administration
+- Any domain with structured operations
+
+## Design Decisions
+
+### Why Terminal-First?
+
+1. **Developers live in terminals** - Meet them where they are
+2. **Keyboards are fast** - No context switching to mouse
+3. **Composability** - Pipe, script, and automate
+4. **Focus** - No distractions, just the task at hand
+
+### Why React in the Terminal?
+
+1. **Component model** - Reusable, testable UI pieces
+2. **State management** - Complex UIs need proper state
+3. **Ecosystem** - Leverage React knowledge and tools
+4. **Future-proof** - Terminal UIs are evolving rapidly
+
+### Why Not a VSCode Extension?
+
+Clanker isn't tied to any editor because:
+1. **Editor agnostic** - Works with vim, emacs, VS Code, etc.
+2. **CI/CD friendly** - Run in automated pipelines
+3. **Scriptable** - Use in larger workflows
+4. **Independent** - Not limited by extension APIs
+
+## Philosophical Commitments
+
+### 1. **User Agency**
+
+The user is always in control:
+- No automatic changes without approval
+- Clear explanations of what will happen
+- Easy to cancel or undo
+- Respect for user preferences
+
+### 2. **Failure Transparency**
+
+When things go wrong:
+- Clear error messages
+- Actionable suggestions
+- No hiding of complexity
+- Learn from failures
+
+### 3. **Progressive Enhancement**
+
+Start simple, grow powerful:
+- Works out of the box
+- Customizable when needed
+- Extensible for power users
+- Documented for developers
+
+### 4. **Community-Driven**
+
+Built for and by the community:
+- Open source core
+- Shareable tools
+- Public roadmap
+- Responsive to feedback
+
+## Conclusion
+
+Clanker isn't just another AI tool—it's a bet on a different future for human-AI collaboration. A future where:
+
+- **Intent becomes implementation** without loss of control
+- **Tools compose** into powerful workflows
+- **AI amplifies** human capability rather than replacing it
+- **Development accelerates** while quality improves
+
+We're not building a tool that thinks for you. We're building a tool that thinks *with* you, acts *for* you, and evolves *alongside* you.
+
+**The boundary between thought and action is dissolving. Welcome to the age of AI agents that actually *do*.**# Quick Start: Tool Development
+
+This guide will walk you through creating your first Clanker tool in 5 minutes.
+
+## 1. Create Your Tool Project
+
+```bash
+npx create-clanker-tool
+```
+
+Answer the prompts:
+- Tool name: `hello-world`
+- Organization: `myorg` (or your username)
+- Description: `A simple hello world tool`
+- Author: Your name
+- TypeScript: Yes (recommended)
+
+## 2. Navigate to Your Project
+
+```bash
+cd hello-world
+npm install
+```
+
+## 3. Edit Your Tool
+
+Open `src/index.ts` and modify it using the modern builder pattern:
+
+```typescript
+import { createTool, ToolCategory, ToolCapability } from '@ziggler/clanker';
+
+export default createTool()
+  .id('hello_world')
+  .name('Hello World')
+  .description('A simple hello world tool')
+  .category(ToolCategory.Utility)
+  .tags('hello', 'greeting', 'example')
+  
+  // Define arguments
+  .stringArg('name', 'Name to greet', {
+    required: false,
+    default: 'World'
+  })
+  
+  // Implement execution logic
+  .execute(async (args, context) => {
+    const { name } = args;
+    const greeting = `Hello, ${name}! 👋`;
+    
+    context.logger?.info(`Greeting ${name}`);
+    
+    return {
+      success: true,
+      output: greeting,
+      data: {
+        name,
+        timestamp: new Date().toISOString()
+      }
+    };
+  })
+  
+  // Add examples for documentation
+  .examples([
+    {
+      description: 'Greet the world',
+      arguments: {},
+      result: 'Hello, World! 👋'
+    },
+    {
+      description: 'Greet a specific person',
+      arguments: { name: 'Alice' },
+      result: 'Hello, Alice! 👋'
+    }
+  ])
+  
+  .build();
+```
+
+## 4. Build and Test Locally
+
+```bash
+# Build TypeScript
+npm run build
+
+# Bundle for distribution
+npm run bundle
+
+# Install locally for testing
+npm run install:local
+```
+
+## 5. Test with Clanker
+
+```bash
+# List tools to verify it's loaded
+clanker --list-tools | grep hello_world
+
+# Test the tool
+clanker --prompt "Use hello_world to greet Alice"
+```
+
+Expected output:
+```
+Hello, Alice! 👋
+```
+
+## 6. Development with Hot Reload
+
+For rapid development:
+
+```bash
+# Terminal 1: Watch and rebuild
+npm run dev:watch
+
+# Terminal 2: Test your changes
+clanker --prompt "Use hello_world tool"
+```
+
+## 7. Publish Your Tool
+
+When ready to share:
+
+```bash
+npm run publish:tool
+```
+
+This will:
+1. Bundle your tool
+2. Generate a manifest
+3. Create a PR template
+4. Guide you through submission
+
+## Important Configuration Notes
+
+### Package.json Configuration
+Your `package.json` must include:
+- `"type": "module"` for ES module support
+- `"main": "src/index.ts"` pointing to TypeScript source
+- Modern `@ziggler/clanker` dependency (^0.2.6 or higher)
+- Peer dependencies for `ink` and `react`
+
+### TypeScript Configuration
+Your `tsconfig.json` should have:
+- `"module": "ES2020"` or higher
+- Paths mapping: `"@ziggler/clanker": ["./node_modules/@ziggler/clanker/dist/exports"]`
+- Enable `esModuleInterop` and `skipLibCheck`
+
+## What's Next?
+
+- Read the full [Tool Development Guide](tools.md)
+- Explore the [Package Manager](package-manager.md)
+- Browse [existing tools](https://github.com/ziggle-dev/clanker-tools)
+- Join the [community](https://github.com/ziggle-dev/clanker/discussions)
+
+## Example: Weather Tool
+
+Here's a slightly more complex example using the builder pattern:
+
+```typescript
+import { createTool, ToolCategory, ToolCapability } from '@ziggler/clanker';
+
+export default createTool()
+  .id('weather')
+  .name('Weather Checker')
+  .description('Check weather for any location')
+  .category(ToolCategory.Utility)
+  .capabilities(ToolCapability.NetworkAccess)
+  .tags('weather', 'forecast', 'temperature')
+  
+  // Arguments
+  .stringArg('location', 'City name', { required: true })
+  .stringArg('units', 'Temperature units', {
+    required: false,
+    default: 'celsius',
+    enum: ['celsius', 'fahrenheit']
+  })
+  
+  // Execute
+  .execute(async (args, context) => {
+    const { location, units } = args;
+    
+    // In a real tool, you'd call a weather API
+    const temp = Math.floor(Math.random() * 30) + 10;
+    const conditions = ['sunny', 'cloudy', 'rainy'][Math.floor(Math.random() * 3)];
+    
+    const unitSymbol = units === 'celsius' ? '°C' : '°F';
+    
+    context.logger?.info(`Checking weather for ${location}`);
+    
+    return {
+      success: true,
+      output: `Weather in ${location}: ${conditions}, ${temp}${unitSymbol}`,
+      data: {
+        location,
+        temperature: temp,
+        units,
+        conditions
+      }
+    };
+  })
+  
+  // Examples
+  .examples([
+    {
+      description: 'Check weather in London',
+      arguments: { location: 'London' },
+      result: 'Weather in London: cloudy, 18°C'
+    },
+    {
+      description: 'Check weather in Fahrenheit',
+      arguments: { location: 'New York', units: 'fahrenheit' },
+      result: 'Weather in New York: sunny, 72°F'
+    }
+  ])
+  
+  .build();
+```
+
+## Tips
+
+1. **Start Simple**: Get a basic version working first
+2. **Test Locally**: Use `npm run install:local` frequently
+3. **Handle Errors**: Always return `{ success: false, error: '...' }` on failure
+4. **Document Well**: Clear descriptions help the AI use your tool correctly
+5. **Version Properly**: Use semantic versioning (1.0.0, 1.1.0, 2.0.0)
+
+Happy tool building! 🛠️# Clanker Session Management
+
+Clanker's Session Management system (introduced in v0.3.0) provides persistent conversation tracking, automatic saving, and comprehensive session lifecycle management. Sessions ensure your conversations, context, and tool execution history are preserved across Clanker restarts.
+
+## Overview
+
+Sessions automatically:
+- Track all messages and tool executions
+- Save conversation history periodically
+- Preserve context between Clanker runs
+- Export transcripts for analysis
+- Integrate with the hook system
+
+## Session Lifecycle
+
+### 1. Session Creation
+When you start Clanker, it automatically:
+- Checks for existing sessions
+- Creates a new session with a unique ID
+- Fires the `SessionStart` hook
+- Begins tracking messages and tool executions
+
+### 2. Session Persistence
+Sessions are automatically saved:
+- Every 30 seconds (configurable)
+- When tool executions complete
+- On graceful shutdown
+- When explicitly requested
+
+### 3. Session Resume
+When restarting Clanker:
+- The last active session is automatically resumed
+- Full conversation history is restored
+- Context and metadata are preserved
+- Work continues seamlessly
+
+## Session Data Structure
+
+### Session State
+```typescript
+interface SessionState {
+  metadata: SessionMetadata;
+  messages: SessionMessage[];
+  toolCalls: Map<string, GrokToolCall>;
+  toolResults: Map<string, ToolResult>;
+  context: Record<string, any>;
+  hookData: Record<string, any>;
+}
+```
+
+### Session Metadata
+```typescript
+interface SessionMetadata {
+  id: string;              // Unique session identifier
+  created: Date;           // Session creation timestamp
+  updated: Date;           // Last update timestamp
+  title?: string;          // Optional session title
+  description?: string;    // Optional description
+  tags?: string[];         // Optional tags for organization
+  projectPath?: string;    // Associated project directory
+  model?: string;          // AI model used
+  provider?: string;       // AI provider
+}
+```
+
+### Session Messages
+```typescript
+interface SessionMessage {
+  id: string;                      // Unique message ID
+  timestamp: Date;                 // Message timestamp
+  role: string;                    // user/assistant/system/tool
+  content?: string;                // Message content
+  tool_calls?: GrokToolCall[];     // Tool invocations
+  tool_call_id?: string;           // Tool response ID
+  tokenCount?: number;             // Token usage
+  metadata?: Record<string, any>;  // Custom metadata
+  hookResults?: any[];             // Hook execution results
+}
+```
+
+## Configuration
+
+### Session Settings
+Configure sessions in `~/.clanker/settings.json`:
+
+```json
+{
+  "session": {
+    "autoSave": true,           // Enable auto-save (default: true)
+    "autoSaveInterval": 30000,  // Auto-save interval in ms (default: 30000)
+    "maxMessages": 1000,        // Max messages before compaction (default: 1000)
+    "compactThreshold": 500     // Compact when this many messages (default: 500)
+  }
+}
+```
+
+### Storage Location
+Sessions are stored in:
+- `~/.clanker/sessions/` - Session data files
+- `~/.clanker/sessions/transcripts/` - Exported transcripts
+
+## Session Commands
+
+While sessions are managed automatically, you can interact with them:
+
+### In-Chat Commands
+```bash
+# View current session info
+> /session
+
+# Export current session
+> /export
+
+# Clear and start new session
+> /clear
+```
+
+### CLI Options
+```bash
+# Resume specific session
+clanker --session <session-id>
+
+# Start new session with title
+clanker --new-session "Project refactoring"
+```
+
+## Session Features
+
+### 1. Message History
+All messages are preserved with:
+- Timestamps
+- Role identification
+- Token counts
+- Hook results
+- Custom metadata
+
+### 2. Tool Execution Tracking
+Every tool execution is recorded:
+- Tool name and arguments
+- Execution results
+- Timing information
+- Error states
+
+### 3. Context Preservation
+Session context includes:
+- Working directory
+- Environment variables
+- Custom key-value pairs
+- Hook-injected data
+
+### 4. Hook Integration
+Sessions integrate seamlessly with hooks:
+- Hook data is persisted
+- Hook results are tracked
+- Session events trigger hooks
+- Hooks can modify session data
+
+## Working with Sessions Programmatically
+
+### In Tools
+Tools can access and modify session data:
+
+```typescript
+export default async function(args: ToolArguments, context: ToolContext) {
+  // Get current session ID
+  const sessionId = context.session.getId();
+  
+  // Add custom context
+  context.session.updateContext('toolData', {
+    lastRun: new Date(),
+    customField: 'value'
+  });
+  
+  // Get session metadata
+  const metadata = context.session.getMetadata();
+  console.log(`Working in session: ${metadata.title || sessionId}`);
+  
+  // Access message history
+  const messages = context.session.getMessages();
+  const lastUserMessage = context.session.getLastMessage('user');
+  
+  return {
+    success: true,
+    data: { sessionInfo: metadata }
+  };
+}
+```
+
+### In Hooks
+Hooks can interact with sessions:
+
+```javascript
+// Session start hook
+export default async function(input, context) {
+  if (input.hook_event_name === 'SessionStart') {
+    // Set session title based on project
+    const projectName = path.basename(context.env.projectDir);
+    
+    context.setSessionData('projectName', projectName);
+    
+    return {
+      continue: true,
+      aiInstructions: `You're working on the ${projectName} project.`
+    };
+  }
+  
+  return { continue: true };
+}
+```
+
+## Session Events
+
+Sessions emit events that can be monitored:
+
+### SessionEvent Enum
+```typescript
+enum SessionEvent {
+  Created = 'created',
+  Loaded = 'loaded',
+  Saved = 'saved',
+  MessageAdded = 'messageAdded',
+  ToolExecuted = 'toolExecuted',
+  ContextUpdated = 'contextUpdated',
+  Closed = 'closed'
+}
+```
+
+### Event Handling
+```javascript
+// In a hook or tool
+context.session.on(SessionEvent.MessageAdded, (message) => {
+  console.log(`New message: ${message.role} - ${message.id}`);
+});
+```
+
+## Transcript Export
+
+Sessions can be exported as JSONL transcripts:
+
+### Export Format
+Each line is a JSON object:
+```json
+{"timestamp":"2025-07-29T10:00:00Z","role":"user","content":"Hello"}
+{"timestamp":"2025-07-29T10:00:01Z","role":"assistant","content":"Hi! How can I help?"}
+{"timestamp":"2025-07-29T10:00:05Z","role":"tool","content":"Tool output...","tool_calls":[...]}
+```
+
+### Export Methods
+
+1. **In-chat export**:
+```bash
+> /export
+# Saves to ~/.clanker/sessions/transcripts/<session-id>.jsonl
+```
+
+2. **Programmatic export**:
+```typescript
+const transcriptPath = await context.session.exportTranscript();
+// Or specify custom path
+const customPath = await context.session.exportTranscript('./my-transcript.jsonl');
+```
+
+## Session Management API
+
+### SessionManager Methods
+
+```typescript
+class SessionManager {
+  // Get session ID
+  getId(): string;
+  
+  // Get/update metadata
+  getMetadata(): SessionMetadata;
+  updateMetadata(updates: Partial<SessionMetadata>): void;
+  
+  // Message operations
+  async addMessage(message: GrokMessage, metadata?: any): Promise<SessionMessage>;
+  getMessages(): SessionMessage[];
+  getMessagesByRole(role: string): SessionMessage[];
+  getLastMessages(n: number): SessionMessage[];
+  
+  // Tool tracking
+  async addToolExecution(toolCall: GrokToolCall, result: ToolResult): Promise<void>;
+  
+  // Context management
+  updateContext(key: string, value: any): void;
+  getContext(key?: string): any;
+  
+  // Hook data
+  updateHookData(hookId: string, data: any): void;
+  getHookData(hookId?: string): any;
+  
+  // Persistence
+  async save(): Promise<void>;
+  async exportTranscript(outputPath?: string): Promise<string>;
+  async close(): Promise<void>;
+  
+  // Static methods
+  static async load(sessionId: string, hookManager: HookManager): Promise<SessionManager>;
+  static async listSessions(): Promise<SessionMetadata[]>;
+}
+```
+
+## Best Practices
+
+### 1. Session Hygiene
+- Let auto-save handle persistence
+- Use meaningful session titles
+- Tag sessions for organization
+- Export important sessions
+
+### 2. Context Management
+- Store only serializable data
+- Use meaningful context keys
+- Clean up temporary context
+- Document context structure
+
+### 3. Performance
+- Sessions auto-compact at thresholds
+- Old messages are summarized
+- Large data should be referenced, not stored
+- Regular exports reduce session size
+
+### 4. Integration
+- Use hooks for session initialization
+- Track important events
+- Leverage session data in tools
+- Export for external analysis
+
+## Examples
+
+### Custom Session Initialization
+
+```javascript
+// .clanker/hooks/session-init.js
+export default async function(input, context) {
+  if (input.source === 'startup') {
+    // Set project-specific context
+    const packageJson = await context.readFile('./package.json')
+      .catch(() => null);
+    
+    if (packageJson) {
+      const pkg = JSON.parse(packageJson);
+      context.setSessionData('project', {
+        name: pkg.name,
+        version: pkg.version,
+        type: 'node'
+      });
+      
+      return {
+        continue: true,
+        aiInstructions: `Working on ${pkg.name} v${pkg.version}`
+      };
+    }
+  }
+  
+  return { continue: true };
+}
+```
+
+### Session-Aware Tool
+
+```typescript
+// Tool that uses session history
+export default async function(args: ToolArguments, context: ToolContext) {
+  const messages = context.session.getMessages();
+  
+  // Count tool usage in this session
+  const toolUsage = messages.reduce((acc, msg) => {
+    if (msg.tool_calls) {
+      msg.tool_calls.forEach(call => {
+        const toolName = call.function.name;
+        acc[toolName] = (acc[toolName] || 0) + 1;
+      });
+    }
+    return acc;
+  }, {} as Record<string, number>);
+  
+  // Update session context
+  context.session.updateContext('toolUsageStats', toolUsage);
+  
+  return {
+    success: true,
+    data: {
+      sessionId: context.session.getId(),
+      messageCount: messages.length,
+      toolUsage
+    }
+  };
+}
+```
+
+### Session Export Hook
+
+```javascript
+// Automatically export sessions with errors
+export default async function(input, context) {
+  if (input.hook_event_name === 'PostToolUse') {
+    if (!input.tool_response.success) {
+      // Mark session for export
+      const errorCount = context.getSessionData('errorCount') || 0;
+      context.setSessionData('errorCount', errorCount + 1);
+      
+      // Export if too many errors
+      if (errorCount >= 5) {
+        const transcript = await context.session.exportTranscript();
+        console.error(`Session exported due to errors: ${transcript}`);
+      }
+    }
+  }
+  
+  return { continue: true };
+}
+```
+
+## Troubleshooting
+
+### Session Not Saving
+1. Check auto-save is enabled
+2. Verify write permissions to `~/.clanker/sessions/`
+3. Check for disk space
+4. Look for errors in debug logs
+
+### Session Not Loading
+1. Verify session file exists
+2. Check file isn't corrupted
+3. Ensure proper permissions
+4. Try manual load with session ID
+
+### Large Session Files
+1. Sessions auto-compact at thresholds
+2. Export and archive old sessions
+3. Adjust `maxMessages` setting
+4. Clear unnecessary context data
+
+## Security Considerations
+
+1. Sessions may contain sensitive data
+2. Stored in plain JSON (not encrypted)
+3. File permissions should be restricted
+4. Don't commit session files to version control
+5. Sanitize before sharing transcripts
+
+## Future Enhancements
+
+Planned improvements:
+- Session encryption options
+- Cloud session backup
+- Session branching/merging
+- Advanced search across sessions
+- Session templates
+- Collaborative sessions# Rachet Tools Documentation
+
+This guide covers the built-in tools available in Clanker and how to create your own custom tools.
+
+## Built-in Tools
+
+### File Operations
+
+#### `read_file`
+Read the contents of a file.
+
+```typescript
+{
+  path: string  // Path to the file to read
+}
+```
+
+Example: "Read the contents of src/index.ts"
+
+#### `write_to_file`
+Write content to a file (creates if doesn't exist).
+
+```typescript
+{
+  path: string     // Path to the file
+  content: string  // Content to write
+}
+```
+
+Example: "Create a new README.md with project documentation"
+
+#### `multi_edit`
+Advanced file editing with multiple changes. Supports various diff formats.
+
+```typescript
+{
+  path: string              // Path to the file
+  edits: Array<{
+    search: string         // Text to find
+    replace: string        // Text to replace with
+    options?: {
+      regex?: boolean      // Use regex matching
+      case_sensitive?: boolean
+      whole_word?: boolean
+    }
+  }>
+}
+```
+
+Example: "Replace all console.log with logger.info in app.ts"
+
+#### `view_file`
+View a file with syntax highlighting and line numbers.
+
+```typescript
+{
+  path: string      // Path to the file
+  start_line?: number  // Starting line (optional)
+  end_line?: number    // Ending line (optional)
+}
+```
+
+Example: "Show me lines 50-100 of server.ts"
+
+#### `remove`
+Remove files or directories with confirmation.
+
+```typescript
+{
+  paths: string[]   // Paths to remove
+  recursive?: boolean  // Remove directories recursively
+}
+```
+
+Example: "Delete all .tmp files in the build directory"
+
+### System Operations
+
+#### `bash`
+Execute shell commands with timeout and confirmation.
+
+```typescript
+{
+  command: string      // Command to execute
+  timeout?: number     // Timeout in milliseconds
+  cwd?: string        // Working directory
+}
+```
+
+Example: "Run npm test and show me the output"
+
+#### `pwd`
+Get the current working directory.
+
+No parameters required.
+
+Example: "What directory am I in?"
+
+#### `list`
+List files and directories with filtering.
+
+```typescript
+{
+  path?: string       // Directory to list (default: current)
+  pattern?: string    // Filter pattern (glob)
+  recursive?: boolean // List recursively
+}
+```
+
+Example: "Show me all TypeScript files in src/"
+
+### Search Operations
+
+#### `search`
+Powerful file search using ripgrep.
+
+```typescript
+{
+  query: string         // Search query (supports regex)
+  path?: string        // Directory to search
+  file_types?: string[] // File extensions to include
+  case_sensitive?: boolean
+  whole_word?: boolean
+  show_context?: boolean // Show surrounding lines
+  context_lines?: number // Number of context lines
+}
+```
+
+Example: "Find all TODO comments in TypeScript files"
+
+### Task Management
+
+#### `create_todo_list`
+Create a visual todo list for tracking tasks.
+
+```typescript
+{
+  todos: Array<{
+    id: string
+    content: string
+    status: 'pending' | 'in_progress' | 'completed'
+    priority: 'low' | 'medium' | 'high'
+  }>
+}
+```
+
+Example: "Create a todo list for refactoring the auth module"
+
+#### `update_todo_list`
+Update an existing todo list.
+
+```typescript
+{
+  updates: Array<{
+    id: string
+    content?: string
+    status?: 'pending' | 'in_progress' | 'completed'
+    priority?: 'low' | 'medium' | 'high'
+  }>
+}
+```
+
+Example: "Mark task 1 as completed"
+
+#### `list_todos`
+Display the current todo list.
+
+No parameters required.
+
+Example: "Show me the current todo list"
+
+### AI Enhancement
+
+#### `summarize`
+Use AI to summarize text or code.
+
+```typescript
+{
+  content: string        // Content to summarize
+  style?: 'brief' | 'detailed' | 'technical'
+  max_length?: number    // Maximum summary length
+}
+```
+
+Example: "Summarize this function's purpose"
+
+### User Interaction
+
+#### `input`
+Get input from the user during execution.
+
+```typescript
+{
+  prompt: string         // Question to ask
+  type?: 'text' | 'confirm' | 'select'
+  choices?: string[]     // For select type
+  default?: string | boolean
+}
+```
+
+Example: "Ask the user which branch to deploy"
+
+## Creating Custom Tools
+
+> **Quick Start**: Use `npx create-clanker-tool` to scaffold a new tool project with all the build configuration ready to go. See the [Package Manager Documentation](package-manager.md#creating-tools) for details.
+
+### Basic Tool Structure
+
+Tools can be created manually in `.clanker/tools/` directory or using our scaffolding tool:
+
+```typescript
+// Using the scaffolding tool (recommended)
+// npx create-clanker-tool
+
+// Or manually: ~/.clanker/tools/my-custom-tool.js
+export default {
+  id: 'my_custom_tool',
+  name: 'My Custom Tool',
+  description: 'Does something useful',
+  
+  // Define arguments
+  arguments: [
+    {
+      name: 'input',
+      type: 'string',
+      description: 'Tool input',
+      required: true
+    },
+    {
+      name: 'count',
+      type: 'number',
+      description: 'Optional count',
+      required: false,
+      default: 1
+    }
+  ],
+  
+  // Execute function
+  execute: async (args, context) => {
+    const { input, count = 1 } = args;
+    try {
+      // Your tool logic here
+      const result = processInput(input, count);
+      
+      return {
+        success: true,
+        output: result
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+};
+```
+
+### Advanced Tool Features
+
+#### 1. Custom UI Rendering
+
+```typescript
+export default {
+  // ... basic config
+  
+  renderResult: ({ result, isExecuting }) => {
+    if (isExecuting) {
+      return <Spinner label="Processing..." />;
+    }
+    
+    return (
+      <Box flexDirection="column">
+        <Text color="green">✓ Success</Text>
+        <Text>{result.output}</Text>
+      </Box>
+    );
+  }
+};
+```
+
+#### 2. Progress Reporting
+
+```typescript
+export default {
+  // ... basic config
+  
+  execute: async ({ input }, { reportProgress }) => {
+    reportProgress(0, 'Starting...');
+    
+    for (let i = 0; i < 100; i += 10) {
+      await doWork();
+      reportProgress(i, `Processing ${i}%`);
+    }
+    
+    reportProgress(100, 'Complete!');
+    return { success: true };
+  }
+};
+```
+
+#### 3. Using Other Tools
+
+```typescript
+export default {
+  // ... basic config
+  
+  execute: async ({ files }, { registry }) => {
+    // Use other tools via registry
+    for (const file of files) {
+      const content = await registry.execute('read_file', { 
+        path: file 
+      };
+      
+      if (content.success) {
+        // Process content
+      }
+    }
+    
+    return { success: true };
+  }
+};
+```
+
+#### 4. Confirmation Handling
+
+```typescript
+export default {
+  // ... basic config
+  requiresConfirmation: true,
+  
+  getConfirmationMessage: (args) => ({
+    title: 'Dangerous Operation',
+    description: `This will delete ${args.files.length} files`,
+    consequences: [
+      'Files cannot be recovered',
+      'Related dependencies may break'
+    ]
+  })
+};
+```
+
+### Tool Best Practices
+
+#### 1. Input Validation
+
+Always validate inputs thoroughly:
+
+```typescript
+inputSchema: z.object({
+  path: z.string()
+    .min(1, 'Path cannot be empty')
+    .refine(path => !path.includes('..'), 'Path traversal not allowed'),
+  
+  options: z.object({
+    recursive: z.boolean().default(false)
+  }).optional()
+})
+```
+
+#### 2. Error Handling
+
+Provide clear error messages:
+
+```typescript
+execute: async ({ path }) => {
+  if (!fs.existsSync(path)) {
+    return {
+      success: false,
+      error: `File not found: ${path}`,
+      suggestion: 'Check the file path and try again'
+    };
+  }
+  // ... rest of logic
+}
+```
+
+#### 3. Performance
+
+For long operations:
+- Report progress regularly
+- Support cancellation
+- Consider chunking large operations
+- Add reasonable timeouts
+
+#### 4. Documentation
+
+Document your tool well:
+
+```typescript
+export default {
+  id: 'analyze_deps',
+  name: 'Analyze Dependencies',
+  description: 'Analyzes npm dependencies for security and updates',
+  
+  examples: [
+    {
+      description: 'Basic usage',
+      args: { path: './package.json' }
+    },
+    {
+      description: 'With security audit',
+      args: { path: './package.json', audit: true }
+    }
+  ],
+  
+  notes: [
+    'Requires npm to be installed',
+    'May take time for large projects',
+    'Results are cached for 1 hour'
+  ]
+};
+```
+
+### Tool Development Workflow
+
+#### 1. Create Your Tool
+
+```bash
+# Use the scaffolding tool
+npx create-clanker-tool
+
+# Follow the prompts to set up your project
+```
+
+#### 2. Develop and Test
+
+```bash
+# Install dependencies
+npm install
+
+# Test locally
+npm run dev
+
+# Build and install for testing
+npm run build
+npm run install:local
+
+# Test with Clanker
+clanker --prompt "Use my_tool to..."
+```
+
+#### 3. Hot Reloading During Development
+
+```bash
+# Terminal 1: Watch and rebuild your tool
+npm run dev:watch
+
+# Terminal 2: Run Clanker with tool watching
+clanker --watch-tools
+```
+
+#### 4. Publish Your Tool
+
+```bash
+# Prepare for publishing
+npm run publish:tool
+
+# This will:
+# - Build and bundle your tool
+# - Generate manifest.json
+# - Create PR template
+# - Open GitHub for submission
+```
+
+### Tool Distribution
+
+#### Using the Package Manager
+
+Clanker includes a built-in package manager for easy tool distribution:
+
+```bash
+# Search for tools
+clanker --search "database"
+
+# Install tools
+clanker --install org/tool-name
+clanker --install org/tool-name@1.2.0
+
+# List installed tools
+clanker --list-installed
+
+# Update tools
+clanker --update org/tool-name
+
+# Uninstall tools
+clanker --uninstall org/tool-name
+```
+
+#### Publishing to the Registry
+
+1. Create your tool using `create-clanker-tool`
+2. Test thoroughly with local installation
+3. Run `npm run publish:tool` to validate structure
+4. Submit PR to [rachet](https://github.com/zigglers/rachet) with:
+   - Source code in `src/` directory
+   - `package.json` with build scripts
+   - Documentation in `README.md`
+   - **NO compiled files** (bin/, dist/, etc.)
+5. After merge:
+   - CI/CD builds your tool automatically
+   - Available to all users via `clanker --install`
+
+See the [Package Manager Documentation](package-manager.md) for complete details.
+
+### Tool Ideas
+
+Here are some ideas for custom tools:
+
+1. **Git Operations**: Automated commits, PR creation, branch management
+2. **Database Tools**: Schema migrations, data queries, backups
+3. **API Testing**: Request builders, response validators, load testing
+4. **Code Generation**: Boilerplate creators, scaffold generators
+5. **DevOps**: Docker commands, K8s operations, CI/CD triggers
+6. **Documentation**: API doc generation, README updates, changelog creation
+7. **Refactoring**: Pattern detection, code transformation, dependency updates
+
+## Tool Development Tips
+
+### 1. Start Simple
+
+Begin with a basic tool and add features incrementally:
+
+```typescript
+// Version 1: Basic
+export default {
+  id: 'count_lines',
+  execute: async ({ path }) => {
+    const content = await fs.readFile(path, 'utf-8');
+    const lines = content.split('\n').length;
+    return { success: true, output: `${lines} lines` };
+  }
+};
+```
+
+### 2. Test Thoroughly
+
+Test your tools before use:
+
+```bash
+# Create test script
+node -e "
+  const tool = require('./my-tool.ts').default;
+  tool.execute({ input: 'test' }).then(console.log);
+"
+```
+
+### 3. Consider Edge Cases
+
+- Empty inputs
+- Missing files
+- Permission errors
+- Network failures
+- Large data sets
+
+### 4. Make Tools Composable
+
+Design tools that work well together:
+
+```typescript
+// Tool 1: Find files
+const files = await registry.execute('find_files', { 
+  pattern: '*.test.ts' 
+};
+
+// Tool 2: Run tests on found files
+const results = await registry.execute('run_tests', { 
+  files: files.output 
+};
+```
+
+## Conclusion
+
+Clanker's tool system is designed to be:
+- **Extensible**: Easy to add new capabilities
+- **Discoverable**: AI can understand and use tools
+- **Safe**: Confirmations and validations built-in
+- **Composable**: Tools can work together
+
+Start with the built-in tools, then create your own as needs arise. The tool system is the heart of Clanker's extensibility.

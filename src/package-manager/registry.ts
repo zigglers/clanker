@@ -14,17 +14,20 @@ import {
 } from './types';
 import { RepositoryManager } from './repository-manager';
 import { SettingsManager } from '../utils/settings-manager';
+import { GitHubAuth, getGitHubAuth } from './github-auth';
 
 export class RegistryClient {
   private registryUrl: string;
   private cacheDir: string;
   private cacheTimeout: number;
   private repoManager: RepositoryManager;
+  private githubAuth: GitHubAuth;
 
   constructor(options: PackageManagerOptions = {}) {
     this.registryUrl = options.registryUrl || 'https://raw.githubusercontent.com/zigglers/rachet/main';
     this.cacheDir = options.cacheDir || path.join(os.homedir(), '.clanker', 'cache');
     this.repoManager = new RepositoryManager();
+    this.githubAuth = getGitHubAuth();
     
     // Get cache timeout from settings
     const settingsManager = SettingsManager.getInstance();
@@ -60,17 +63,41 @@ export class RegistryClient {
           debug.log(`[Registry] Cache miss for ${repo.name}`);
         }
         
-        // Always fetch from registry.json on main branch
-        const url = `${registryUrl}/registry.json`;
-        debug.log(`[Registry] Fetching registry from ${url}`);
-        const response = await fetch(url);
+        // Check if this is a private repository  
+        let registry: ToolRegistry;
         
-        if (!response.ok) {
-          throw new Error(`Failed to fetch from ${repo.name}: ${response.statusText}`);
+        if (repo.url.includes('github.com')) {
+          try {
+            // Try using GitHub auth for private repos
+            const registryContent = await this.githubAuth.fetchRepoContent(repo.url, 'registry.json');
+            registry = JSON.parse(registryContent) as ToolRegistry;
+            debug.log(`[Registry] Fetched ${registry.tools?.length || 0} tools from registry.json via GitHub auth`);
+          } catch (authError) {
+            // Fallback to direct URL for public repos
+            debug.log(`[Registry] GitHub auth failed, trying direct URL:`, authError);
+            const url = `${registryUrl}/registry.json`;
+            const response = await fetch(url);
+            
+            if (!response.ok) {
+              throw new Error(`Failed to fetch from ${repo.name}: ${response.statusText}`);
+            }
+            
+            registry = await response.json() as ToolRegistry;
+            debug.log(`[Registry] Fetched ${registry.tools?.length || 0} tools from registry.json`);
+          }
+        } else {
+          // Non-GitHub repository, use direct URL
+          const url = `${registryUrl}/registry.json`;
+          debug.log(`[Registry] Fetching registry from ${url}`);
+          const response = await fetch(url);
+          
+          if (!response.ok) {
+            throw new Error(`Failed to fetch from ${repo.name}: ${response.statusText}`);
+          }
+          
+          registry = await response.json() as ToolRegistry;
+          debug.log(`[Registry] Fetched ${registry.tools?.length || 0} tools from registry.json`);
         }
-        
-        const registry = await response.json() as ToolRegistry;
-        debug.log(`[Registry] Fetched ${registry.tools?.length || 0} tools from registry.json`);
         
         // Cache the result
         await this.writeCache(cacheFile, registry);
@@ -248,6 +275,19 @@ export class RegistryClient {
           const releaseBuffer = await this.downloadFromRelease(repo, tool, version);
           if (releaseBuffer) {
             return releaseBuffer;
+          }
+        }
+        
+        // Try GitHub auth for private repos
+        if (repo.url.includes('github.com')) {
+          try {
+            const toolPath = `tools/${tool.org}/${tool.name}/${version}/index.js`;
+            debug.log(`[Registry] Downloading ${tool.org}/${tool.name}@${version} from ${repo.name} via GitHub auth`);
+            const buffer = await this.githubAuth.downloadFromGitHub(repo.url, toolPath);
+            return buffer;
+          } catch (authError) {
+            debug.log(`[Registry] GitHub auth download failed:`, authError);
+            // Fall through to try direct URL
           }
         }
         
