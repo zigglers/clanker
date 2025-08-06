@@ -29,9 +29,32 @@ export class SelfUpdater {
       console.log('🔍 Checking for updates...');
       
       // Get current version from package.json
-      const packagePath = path.join(__dirname, '..', '..', 'package.json');
-      const packageJson = JSON.parse(await fs.readFile(packagePath, 'utf8'));
-      const currentVersion = packageJson.version;
+      // Try multiple possible locations
+      let packageJson: any;
+      let currentVersion: string;
+      
+      const possiblePaths = [
+        path.join(__dirname, '..', 'package.json'),  // From dist/commands
+        path.join(__dirname, '..', '..', 'package.json'),  // From dist
+        path.join(process.cwd(), 'package.json'),  // Current directory
+        path.join(this.INSTALL_DIR, 'current', 'package.json'),  // Installed location
+      ];
+      
+      for (const packagePath of possiblePaths) {
+        try {
+          packageJson = JSON.parse(await fs.readFile(packagePath, 'utf8'));
+          currentVersion = packageJson.version;
+          break;
+        } catch {
+          // Try next path
+        }
+      }
+      
+      if (!currentVersion) {
+        // Fallback to a default version if we can't find package.json
+        currentVersion = '0.0.0';
+        console.log('⚠️  Could not determine current version, assuming 0.0.0');
+      }
       
       // Get latest release from GitHub
       const releases = await this.githubAuth.listReleases(`https://github.com/${this.REPO_OWNER}/${this.REPO_NAME}`);
