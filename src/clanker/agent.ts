@@ -144,7 +144,7 @@ export class GrokAgent extends EventEmitter {
         await this.waitForToolsToLoad();
         
         // Call startup hooks for all tools that have them
-        const tools = this.registry.getAllTools();
+        const tools = this.registry.list();
         const context = this.registry.getContext();
         for (const tool of tools) {
             if (tool.startup) {
