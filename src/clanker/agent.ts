@@ -143,6 +143,21 @@ export class GrokAgent extends EventEmitter {
         // Load tools
         await this.waitForToolsToLoad();
         
+        // Call startup hooks for all tools that have them
+        const tools = this.registry.getAllTools();
+        const context = this.registry.getContext();
+        for (const tool of tools) {
+            if (tool.startup) {
+                try {
+                    debug.log(`[GrokAgent] Calling startup hook for tool: ${tool.id}`);
+                    await tool.startup(context);
+                } catch (error) {
+                    debug.error(`[GrokAgent] Startup hook failed for tool ${tool.id}:`, error);
+                    // Don't fail initialization if a startup hook fails
+                }
+            }
+        }
+        
         // Initialize session if needed
         if (this.sessionId) {
             // Load existing session

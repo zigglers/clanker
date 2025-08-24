@@ -23,6 +23,7 @@ export class ToolBuilder {
     private args: ArgumentSpec[] = [];
     private executor?: ToolExecutor;
     private initHook?: (context: ToolContext) => Promise<void>;
+    private startupHook?: (context: ToolContext) => Promise<void>;
     private cleanupHook?: (context: ToolContext) => Promise<void>;
     private schemas: { input?: Schema; output?: Schema } = {};
     private isComposable?: boolean;
@@ -206,6 +207,14 @@ export class ToolBuilder {
     }
 
     /**
+     * Set startup hook - called when Clanker starts
+     */
+    onStartup(hook: (context: ToolContext) => Promise<void>): ToolBuilder {
+        this.startupHook = hook;
+        return this;
+    }
+
+    /**
      * Set cleanup hook
      */
     onCleanup(hook: (context: ToolContext) => Promise<void>): ToolBuilder {
@@ -269,6 +278,10 @@ export class ToolBuilder {
 
         if (this.initHook) {
             tool.initialize = this.initHook;
+        }
+
+        if (this.startupHook) {
+            tool.startup = this.startupHook;
         }
 
         if (this.cleanupHook) {

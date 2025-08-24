@@ -120,6 +120,7 @@ export interface ToolDefinition extends ToolMetadata {
 
     // Optional lifecycle hooks
     initialize?: (context: ToolContext) => Promise<void>;
+    startup?: (context: ToolContext) => Promise<void>;
     cleanup?: (context: ToolContext) => Promise<void>;
 
     // Composition support

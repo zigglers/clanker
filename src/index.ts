@@ -106,8 +106,8 @@ async function processPromptHeadless(
             watchTools
         });
 
-        // Wait for tools to load before processing
-        await agent.waitForToolsToLoad();
+        // Initialize the agent (sets up shared state with API key)
+        await agent.initialize();
 
         // Process the prompt
         const chunks: string[] = [];
