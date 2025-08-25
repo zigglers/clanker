@@ -252,11 +252,69 @@ export class ToolLoader {
     }
 
     /**
+     * Install npm dependencies for a tool if package.json exists
+     */
+    private async installToolDependencies(filePath: string): Promise<void> {
+        try {
+            // Get the tool directory (handle both versioned and current symlinks)
+            let toolDir = path.dirname(filePath);
+            
+            // If this is a symlink (current/index.js), resolve to actual version directory
+            if (toolDir.endsWith('current')) {
+                const realPath = await fs.realpath(filePath);
+                toolDir = path.dirname(realPath);
+            }
+            
+            const packageJsonPath = path.join(toolDir, 'package.json');
+            
+            // Check if package.json exists
+            if (!await this.exists(packageJsonPath)) {
+                return;
+            }
+            
+            // Check if node_modules already exists
+            const nodeModulesPath = path.join(toolDir, 'node_modules');
+            if (await this.exists(nodeModulesPath)) {
+                debug.log(`[ToolLoader] Dependencies already installed for ${filePath}`);
+                return;
+            }
+            
+            // Read package.json to check if there are dependencies
+            const packageJson = JSON.parse(await fs.readFile(packageJsonPath, 'utf-8'));
+            const hasDeps = packageJson.dependencies && Object.keys(packageJson.dependencies).length > 0;
+            
+            if (!hasDeps) {
+                return;
+            }
+            
+            debug.log(`[ToolLoader] Installing npm dependencies for ${filePath}...`);
+            
+            // Install dependencies
+            const { exec } = await import('child_process');
+            const { promisify } = await import('util');
+            const execAsync = promisify(exec);
+            
+            await execAsync('npm install --production --silent', {
+                cwd: toolDir,
+                env: { ...process.env, NODE_ENV: 'production' }
+            });
+            
+            debug.log(`[ToolLoader] Dependencies installed successfully for ${filePath}`);
+        } catch (error) {
+            debug.error(`[ToolLoader] Error installing dependencies for ${filePath}:`, error);
+            // Don't throw - tool might still work without dependencies
+        }
+    }
+
+    /**
      * Load a single tool file
      */
     private async loadToolFile(filePath: string): Promise<void> {
         try {
             debug.log(`[ToolLoader] Attempting to load: ${filePath}`);
+            
+            // Check if tool needs npm dependencies installed
+            await this.installToolDependencies(filePath);
 
             // Skip hash computation for initial load - just load the tool
             // Hash checking is mainly useful for watch mode

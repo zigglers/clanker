@@ -311,6 +311,9 @@ export class ToolInstaller {
     // Write tool file
     await fs.writeFile(toolFile, content);
     
+    // Try to download additional files (package.json, manifest.yml, etc.)
+    await this.downloadAdditionalFiles(tool, version, toolDir);
+    
     // Update current version pointer
     // On Windows, use a file instead of symlink to avoid permission issues
     const currentPointer = path.join(this.toolsDir, tool.org, tool.name, 'current');
@@ -329,6 +332,27 @@ export class ToolInstaller {
     }
     
     return toolFile;
+  }
+
+  /**
+   * Download additional files for a tool (package.json, manifest.yml, etc.)
+   */
+  private async downloadAdditionalFiles(tool: ToolIdentifier, version: string, toolDir: string): Promise<void> {
+    const additionalFiles = ['package.json', 'manifest.yml'];
+    
+    for (const fileName of additionalFiles) {
+      try {
+        const fileContent = await this.registry.downloadToolFile(tool, version, fileName);
+        if (fileContent) {
+          const filePath = path.join(toolDir, fileName);
+          await fs.writeFile(filePath, fileContent);
+          debug.log(`[Installer] Downloaded ${fileName} for ${tool.org}/${tool.name}@${version}`);
+        }
+      } catch (error) {
+        // It's okay if additional files don't exist
+        debug.log(`[Installer] ${fileName} not found for ${tool.org}/${tool.name}@${version}`);
+      }
+    }
   }
 
   /**
