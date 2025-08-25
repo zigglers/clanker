@@ -33,7 +33,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          registry-url: 'https://registry.npmjs.org'
       
       - name: Extract PR Information
         id: extract
@@ -227,6 +226,13 @@ jobs:
           gh release upload "v$VERSION" "$TARBALL" --clobber
           
           echo "✅ Uploaded $TARBALL to release"
+      
+      - name: Setup Node.js for NPM Publish
+        if: success()
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
       
       - name: Publish to NPM
         if: success()
