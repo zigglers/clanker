@@ -1,0 +1,160 @@
+name: Create Clanker PR
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch name'
+        required: true
+      submission_type:
+        description: 'Submission type (feature/fix/chore)'
+        required: true
+      version:
+        description: 'Version'
+        required: true
+      author:
+        description: 'Author username'
+        required: true
+      issue_number:
+        description: 'Source issue number'
+        required: true
+      description:
+        description: 'Description'
+        required: true
+      changelog:
+        description: 'Changelog entry'
+        required: true
+      testing:
+        description: 'Testing details'
+        required: true
+      current_version:
+        description: 'Current version'
+        required: true
+      breaking_changes:
+        description: 'Breaking changes (Yes/No)'
+        default: 'No'
+      breaking_details:
+        description: 'Breaking change details'
+        default: ''
+      root_cause:
+        description: 'Root cause (for fixes)'
+        default: ''
+      fix_description:
+        description: 'Fix description'
+        default: ''
+      chore_type:
+        description: 'Chore type'
+        default: ''
+      user_impact:
+        description: 'User impact'
+        default: ''
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  create-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+      
+      - name: Create Pull Request
+        run: |
+          TYPE="${{ inputs.submission_type }}"
+          VERSION="${{ inputs.version }}"
+          BRANCH="${{ inputs.branch }}"
+          
+          # Determine emoji based on type
+          case "$TYPE" in
+            feature)
+              EMOJI="🚀"
+              ;;
+            fix)
+              EMOJI="🐛"
+              ;;
+            chore)
+              EMOJI="🔧"
+              ;;
+          esac
+          
+          # Create PR body
+          cat > pr-body.md << 'EOF'
+          ## ${{ env.EMOJI }} Automated ${{ inputs.submission_type }} Submission
+          
+          This PR was automatically generated from issue #${{ inputs.issue_number }}.
+          
+          ### 📋 Summary
+          ${{ inputs.description }}
+          
+          ### 📝 Changelog
+          ${{ inputs.changelog }}
+          
+          ### 🏷️ Version
+          **${{ inputs.current_version }}** → **${{ inputs.version }}**
+          
+          EOF
+          
+          # Add type-specific sections
+          if [ "$TYPE" = "feature" ]; then
+            if [ "${{ inputs.breaking_changes }}" = "Yes" ]; then
+              cat >> pr-body.md << 'EOF'
+          ### ⚠️ Breaking Changes
+          ${{ inputs.breaking_details }}
+          
+          EOF
+            fi
+          elif [ "$TYPE" = "fix" ]; then
+            if [ -n "${{ inputs.root_cause }}" ]; then
+              cat >> pr-body.md << 'EOF'
+          ### 🔍 Root Cause
+          ${{ inputs.root_cause }}
+          
+          ### ✅ Fix Details
+          ${{ inputs.fix_description }}
+          
+          EOF
+            fi
+          elif [ "$TYPE" = "chore" ]; then
+            if [ -n "${{ inputs.chore_type }}" ]; then
+              cat >> pr-body.md << 'EOF'
+          ### 🔧 Chore Type
+          ${{ inputs.chore_type }}
+          
+          ### 👥 User Impact
+          ${{ inputs.user_impact }}
+          
+          EOF
+            fi
+          fi
+          
+          # Add testing section
+          cat >> pr-body.md << 'EOF'
+          ### 🧪 Testing
+          ${{ inputs.testing }}
+          
+          ### 📊 Validation
+          - ✅ Semantic version validated
+          - ✅ Changelog updated
+          - ✅ Version files updated
+          
+          Closes #${{ inputs.issue_number }}
+          EOF
+          
+          # Substitute emoji
+          sed -i "s/\${{ env.EMOJI }}/$EMOJI/g" pr-body.md
+          
+          # Create PR
+          PR_URL=$(gh pr create \
+            --base main \
+            --head "$BRANCH" \
+            --title "$EMOJI $TYPE: $VERSION" \
+            --body-file pr-body.md \
+            --label "clanker-$TYPE")
+          
+          echo "Created PR: $PR_URL"
+        env:
+          GH_TOKEN: ${{ secrets.BOT_TOKEN }}

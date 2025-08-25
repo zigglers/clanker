@@ -394,100 +394,57 @@ jobs:
             echo "push_failed=false" >> $GITHUB_OUTPUT
           fi
       
-      - name: Create Pull Request
+      - name: Trigger PR Creation Workflow
         if: success()
         id: pr
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          TYPE="${{ steps.parse.outputs.submission_type }}"
-          VERSION="${{ steps.parse.outputs.version }}"
-          BRANCH="${{ steps.branch.outputs.branch }}"
-          
-          # Determine emoji based on type
-          case "$TYPE" in
-            feature)
-              EMOJI="🚀"
-              ;;
-            fix)
-              EMOJI="🐛"
-              ;;
-            chore)
-              EMOJI="🔧"
-              ;;
-          esac
-          
-          # Create PR body
-          cat > pr-body.md << EOF
-          ## $EMOJI Automated $TYPE Submission
-          
-          This PR was automatically generated from issue #${{ github.event.issue.number }}.
-          
-          ### 📋 Summary
-          ${{ steps.parse.outputs.description }}
-          
-          ### 📝 Changelog
-          ${{ steps.parse.outputs.changelog }}
-          
-          ### 🏷️ Version
-          **${{ steps.current.outputs.current_version }}** → **$VERSION**
-          
-          EOF
-          
-          # Add type-specific sections
-          if [ "$TYPE" = "feature" ]; then
-            if [ "${{ steps.parse.outputs.breaking_changes }}" = "Yes" ]; then
-              echo "### ⚠️ Breaking Changes" >> pr-body.md
-              echo "${{ steps.parse.outputs.breaking_details }}" >> pr-body.md
-              echo "" >> pr-body.md
-            fi
-          elif [ "$TYPE" = "fix" ]; then
-            echo "### 🔍 Root Cause" >> pr-body.md
-            echo "${{ steps.parse.outputs.root_cause }}" >> pr-body.md
-            echo "" >> pr-body.md
-            echo "### ✅ Fix Details" >> pr-body.md
-            echo "${{ steps.parse.outputs.fix_description }}" >> pr-body.md
-            echo "" >> pr-body.md
-          elif [ "$TYPE" = "chore" ]; then
-            echo "### 🔧 Chore Type" >> pr-body.md
-            echo "${{ steps.parse.outputs.chore_type }}" >> pr-body.md
-            echo "" >> pr-body.md
-            echo "### 👥 User Impact" >> pr-body.md
-            echo "${{ steps.parse.outputs.user_impact }}" >> pr-body.md
-            echo "" >> pr-body.md
-          fi
-          
-          # Add testing section
-          echo "### 🧪 Testing" >> pr-body.md
-          echo "${{ steps.parse.outputs.testing }}" >> pr-body.md
-          echo "" >> pr-body.md
-          
-          echo "### 📊 Validation" >> pr-body.md
-          echo "- ✅ Semantic version validated" >> pr-body.md
-          echo "- ✅ Changelog updated" >> pr-body.md
-          echo "- ✅ Version files updated" >> pr-body.md
-          echo "" >> pr-body.md
-          
-          echo "Closes #${{ github.event.issue.number }}" >> pr-body.md
-          
-          # Create PR
-          PR_URL=$(gh pr create \
-            --base main \
-            --head "$BRANCH" \
-            --title "$EMOJI $TYPE: $VERSION" \
-            --body-file pr-body.md \
-            --label "clanker-$TYPE")
-          
-          echo "pr_url=$PR_URL" >> $GITHUB_OUTPUT
-          echo "Created PR: $PR_URL"
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.BOT_TOKEN || secrets.GITHUB_TOKEN }}
+          script: |
+            try {
+              // Trigger the PR creation workflow
+              const result = await github.rest.actions.createWorkflowDispatch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: 'create-clanker-pr.yml',
+                ref: 'main',
+                inputs: {
+                  branch: '${{ steps.branch.outputs.branch }}',
+                  submission_type: '${{ steps.parse.outputs.submission_type }}',
+                  version: '${{ steps.parse.outputs.version }}',
+                  author: '${{ steps.parse.outputs.author }}',
+                  issue_number: '${{ github.event.issue.number }}',
+                  description: `${{ steps.parse.outputs.description }}`.substring(0, 1000),
+                  changelog: `${{ steps.parse.outputs.changelog }}`.substring(0, 1000),
+                  testing: `${{ steps.parse.outputs.testing }}`.substring(0, 1000),
+                  current_version: '${{ steps.current.outputs.current_version }}',
+                  breaking_changes: '${{ steps.parse.outputs.breaking_changes }}' || 'No',
+                  breaking_details: `${{ steps.parse.outputs.breaking_details }}`.substring(0, 1000) || '',
+                  root_cause: `${{ steps.parse.outputs.root_cause }}`.substring(0, 1000) || '',
+                  fix_description: `${{ steps.parse.outputs.fix_description }}`.substring(0, 1000) || '',
+                  chore_type: '${{ steps.parse.outputs.chore_type }}' || '',
+                  user_impact: '${{ steps.parse.outputs.user_impact }}' || ''
+                }
+              });
+              
+              console.log('✅ PR creation workflow triggered successfully');
+              core.setOutput('workflow_triggered', 'true');
+              core.setOutput('pr_url', `https://github.com/${context.repo.owner}/${context.repo.repo}/actions`);
+            } catch (error) {
+              console.log('⚠️ Could not trigger PR workflow:', error.message);
+              console.log('This may be due to missing BOT_TOKEN secret.');
+              core.setOutput('workflow_triggered', 'false');
+              core.setOutput('pr_url', '');
+            }
       
       - name: Comment on Issue
         if: always()
         uses: actions/github-script@v7
         with:
           script: |
-            const success = ${{ steps.pr.outcome == 'success' }};
+            const workflowTriggered = '${{ steps.pr.outputs.workflow_triggered }}' === 'true';
             const pushFailed = '${{ steps.commit.outputs.push_failed }}' === 'true';
+            const success = workflowTriggered || ${{ steps.pr.outcome == 'success' }};
             
             let comment = '';
             
@@ -505,8 +462,15 @@ jobs:
               comment += `- ✅ Files updated\n`;
               comment += `- ✅ Pull request created\n\n`;
               
-              comment += `### 🔗 Pull Request\n`;
-              comment += `${{ steps.pr.outputs.pr_url }}\n\n`;
+              if (workflowTriggered) {
+                comment += `### 🔗 Pull Request\n`;
+                comment += `A separate workflow has been triggered to create the pull request.\n`;
+                comment += `Check the [Actions tab](${{ steps.pr.outputs.pr_url }}) for the PR creation status.\n\n`;
+                comment += `> ℹ️ **Note**: The PR will be created in a few moments by the automated workflow.\n\n`;
+              } else {
+                comment += `### 🔗 Pull Request\n`;
+                comment += `${{ steps.pr.outputs.pr_url || 'Manual PR creation required' }}\n\n`;
+              }
               
               comment += `### 🎯 Next Steps\n`;
               comment += `1. The PR will be reviewed by maintainers\n`;
@@ -566,11 +530,22 @@ jobs:
                 comment += `\n### ❌ Commit Failed\n`;
                 comment += `Failed to commit changes. Check the workflow logs for details.\n`;
               } else if (!success) {
-                comment += `\n### ❌ Pull Request Creation Failed\n`;
-                comment += `The PR could not be created. This might be due to:\n`;
-                comment += `- A PR already exists for this branch\n`;
-                comment += `- Insufficient permissions\n`;
-                comment += `- Network issues\n`;
+                comment += `\n### ⚠️ Pull Request Creation\n`;
+                if (!workflowTriggered) {
+                  comment += `The automated PR workflow could not be triggered. This usually means the BOT_TOKEN secret is not configured.\n\n`;
+                  comment += `### 🔧 Manual PR Creation Required\n`;
+                  comment += `You can create the PR manually using:\n`;
+                  comment += `\`\`\`bash\n`;
+                  comment += `gh pr create \\\n`;
+                  comment += `  --repo zigglers/clanker \\\n`;
+                  comment += `  --base main \\\n`;
+                  comment += `  --head ${{ steps.branch.outputs.branch }} \\\n`;
+                  comment += `  --title "${{ steps.parse.outputs.submission_type }}: ${{ steps.parse.outputs.version }}" \\\n`;
+                  comment += `  --body "Closes #${{ github.event.issue.number }}"\n`;
+                  comment += `\`\`\`\n`;
+                } else {
+                  comment += `The PR could not be created. Check the workflow logs for details.\n`;
+                }
               }
               
               comment += `\n### 📝 Action Required\n`;
