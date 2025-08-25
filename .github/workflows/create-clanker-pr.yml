@@ -42,14 +42,17 @@ jobs:
       - name: Parse Input Data
         id: parse
         uses: actions/github-script@v7
+        env:
+          PR_DATA: ${{ inputs.pr_data }}
+          OPTIONAL_DATA: ${{ inputs.optional_data }}
         with:
           script: |
-            // Parse PR data
+            // Parse PR data from environment variables
             let prData = {};
             let optionalData = {};
             
             try {
-              prData = JSON.parse(`${{ inputs.pr_data }}`);
+              prData = JSON.parse(process.env.PR_DATA || '{}');
             } catch (e) {
               console.log('Failed to parse pr_data:', e);
               prData = {
@@ -61,7 +64,7 @@ jobs:
             }
             
             try {
-              optionalData = JSON.parse(`${{ inputs.optional_data }}`);
+              optionalData = JSON.parse(process.env.OPTIONAL_DATA || '{}');
             } catch (e) {
               console.log('Failed to parse optional_data:', e);
               optionalData = {};
