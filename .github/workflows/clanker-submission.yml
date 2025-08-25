@@ -234,11 +234,21 @@ jobs:
           git config user.name "Clanker Bot"
           git config user.email "bot@clanker.dev"
           
-          # Create and checkout branch
-          git checkout -b "$BRANCH"
+          # Check if branch already exists on remote
+          if git ls-remote --heads origin "$BRANCH" | grep -q "$BRANCH"; then
+            echo "⚠️ Branch $BRANCH already exists on remote, fetching and resetting..."
+            git fetch origin "$BRANCH"
+            git checkout -B "$BRANCH" "origin/$BRANCH"
+            
+            # Pull latest changes from main
+            git pull origin main --no-edit
+          else
+            # Create new branch from main
+            git checkout -b "$BRANCH"
+          fi
           
           echo "branch=$BRANCH" >> $GITHUB_OUTPUT
-          echo "Created branch: $BRANCH"
+          echo "Created/updated branch: $BRANCH"
       
       - name: Update Files
         if: success()
@@ -334,15 +344,55 @@ jobs:
       
       - name: Commit Changes
         if: success()
+        id: commit
         run: |
-          git add -A
-          git commit -m "${{ steps.parse.outputs.submission_type }}: version ${{ steps.parse.outputs.version }}
+          # Check if there are changes to commit
+          if git diff --staged --quiet && git diff --quiet; then
+            echo "No changes to commit, checking if we need to force push existing commits..."
+            NEEDS_PUSH=false
+            
+            # Check if local branch is ahead of remote
+            LOCAL_COMMIT=$(git rev-parse HEAD)
+            REMOTE_COMMIT=$(git rev-parse origin/"${{ steps.branch.outputs.branch }}" 2>/dev/null || echo "none")
+            
+            if [ "$LOCAL_COMMIT" != "$REMOTE_COMMIT" ]; then
+              echo "Local branch has commits that need to be pushed"
+              NEEDS_PUSH=true
+            fi
+          else
+            # Stage and commit changes
+            git add -A
+            git commit -m "${{ steps.parse.outputs.submission_type }}: version ${{ steps.parse.outputs.version }}
           
           ${{ steps.parse.outputs.changelog }}
           
           Submitted by @${{ steps.parse.outputs.author }} via issue #${{ github.event.issue.number }}"
+            NEEDS_PUSH=true
+          fi
           
-          git push origin "${{ steps.branch.outputs.branch }}"
+          # Push changes
+          if [ "$NEEDS_PUSH" = "true" ]; then
+            # Try regular push first
+            if ! git push origin "${{ steps.branch.outputs.branch }}"; then
+              echo "⚠️ Regular push failed, attempting to pull and retry..."
+              
+              # Pull with rebase to get latest changes
+              git pull origin "${{ steps.branch.outputs.branch }}" --rebase
+              
+              # Try push again
+              if ! git push origin "${{ steps.branch.outputs.branch }}"; then
+                echo "❌ Push failed even after pull. This might require manual intervention."
+                echo "push_failed=true" >> $GITHUB_OUTPUT
+                exit 1
+              fi
+            fi
+            
+            echo "✅ Successfully pushed changes"
+            echo "push_failed=false" >> $GITHUB_OUTPUT
+          else
+            echo "ℹ️ No new changes to push"
+            echo "push_failed=false" >> $GITHUB_OUTPUT
+          fi
       
       - name: Create Pull Request
         if: success()
@@ -437,6 +487,7 @@ jobs:
         with:
           script: |
             const success = ${{ steps.pr.outcome == 'success' }};
+            const pushFailed = '${{ steps.commit.outputs.push_failed }}' === 'true';
             
             let comment = '';
             
@@ -478,10 +529,17 @@ jobs:
               
               const parseSuccess = ${{ steps.parse.outcome == 'success' }};
               const validateSuccess = ${{ steps.validate.outcome == 'success' }};
+              const branchSuccess = ${{ steps.branch.outcome == 'success' }};
+              const updateSuccess = ${{ steps.update.outcome == 'success' }};
+              const commitSuccess = ${{ steps.commit.outcome == 'success' }};
               
               comment += `### 📊 Pipeline Status\n`;
               comment += `- ${parseSuccess ? '✅' : '❌'} Issue parsing\n`;
               comment += `- ${validateSuccess ? '✅' : '❌'} Version validation\n`;
+              comment += `- ${branchSuccess ? '✅' : '❌'} Branch creation\n`;
+              comment += `- ${updateSuccess ? '✅' : '❌'} File updates\n`;
+              comment += `- ${commitSuccess && !pushFailed ? '✅' : '❌'} Commit & push\n`;
+              comment += `- ${success ? '✅' : '❌'} Pull request creation\n`;
               
               if (!parseSuccess) {
                 comment += `\n### ❌ Parsing Error\n`;
@@ -489,10 +547,36 @@ jobs:
               } else if (!validateSuccess) {
                 comment += `\n### ❌ Version Validation Error\n`;
                 comment += `${{ steps.validate.outputs.message }}\n`;
+              } else if (pushFailed) {
+                comment += `\n### ⚠️ Git Push Failed\n`;
+                comment += `The workflow encountered a conflict when pushing changes. This can happen when:\n`;
+                comment += `- The branch was modified externally\n`;
+                comment += `- Multiple submissions are being processed simultaneously\n`;
+                comment += `- The repository was updated after the workflow started\n\n`;
+                comment += `**The workflow attempted to automatically resolve this but failed.**\n\n`;
+                comment += `### 🔧 How to Fix\n`;
+                comment += `1. **Option 1**: Close this issue and create a new one with the same information\n`;
+                comment += `2. **Option 2**: Delete the branch \`${{ steps.branch.outputs.branch }}\` and edit this issue to trigger the workflow again\n`;
+                comment += `3. **Option 3**: Manually resolve the conflicts in the branch and create a PR\n\n`;
+                comment += `To delete the branch:\n`;
+                comment += `\`\`\`bash\n`;
+                comment += `git push origin --delete ${{ steps.branch.outputs.branch }}\n`;
+                comment += `\`\`\`\n`;
+              } else if (!commitSuccess) {
+                comment += `\n### ❌ Commit Failed\n`;
+                comment += `Failed to commit changes. Check the workflow logs for details.\n`;
+              } else if (!success) {
+                comment += `\n### ❌ Pull Request Creation Failed\n`;
+                comment += `The PR could not be created. This might be due to:\n`;
+                comment += `- A PR already exists for this branch\n`;
+                comment += `- Insufficient permissions\n`;
+                comment += `- Network issues\n`;
               }
               
               comment += `\n### 📝 Action Required\n`;
-              comment += `Please edit your issue to fix the errors and the pipeline will run again automatically.`;
+              comment += `Please review the error above and take the suggested action. `;
+              comment += `If the issue persists, you may need to create the PR manually or contact a maintainer.\n\n`;
+              comment += `**Branch**: \`${{ steps.branch.outputs.branch }}\``;
             }
             
             await github.rest.issues.createComment({
