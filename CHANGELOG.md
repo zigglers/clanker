@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.5] - 2025-08-25
+
+### Added
+- Added automatic npm dependency installation for tools at runtime
+- Tools with package.json dependencies are now automatically installed on first load
+- Improved tool loading resilience with non-blocking dependency installation
+
 ## [0.5.4] - 2025-08-25
 
 ### Fixed
