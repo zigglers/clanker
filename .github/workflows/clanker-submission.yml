@@ -402,6 +402,24 @@ jobs:
           github-token: ${{ secrets.BOT_TOKEN || secrets.GITHUB_TOKEN }}
           script: |
             try {
+              // Prepare PR data as JSON
+              const prData = {
+                description: `${{ steps.parse.outputs.description }}`.substring(0, 500),
+                changelog: `${{ steps.parse.outputs.changelog }}`.substring(0, 500),
+                testing: `${{ steps.parse.outputs.testing }}`.substring(0, 500),
+                author: '${{ steps.parse.outputs.author }}'
+              };
+              
+              // Prepare optional data as JSON
+              const optionalData = {
+                breaking_changes: '${{ steps.parse.outputs.breaking_changes }}' || 'No',
+                breaking_details: `${{ steps.parse.outputs.breaking_details }}`.substring(0, 500) || '',
+                root_cause: `${{ steps.parse.outputs.root_cause }}`.substring(0, 500) || '',
+                fix_description: `${{ steps.parse.outputs.fix_description }}`.substring(0, 500) || '',
+                chore_type: '${{ steps.parse.outputs.chore_type }}' || '',
+                user_impact: '${{ steps.parse.outputs.user_impact }}' || ''
+              };
+              
               // Trigger the PR creation workflow
               const result = await github.rest.actions.createWorkflowDispatch({
                 owner: context.repo.owner,
@@ -412,18 +430,10 @@ jobs:
                   branch: '${{ steps.branch.outputs.branch }}',
                   submission_type: '${{ steps.parse.outputs.submission_type }}',
                   version: '${{ steps.parse.outputs.version }}',
-                  author: '${{ steps.parse.outputs.author }}',
                   issue_number: '${{ github.event.issue.number }}',
-                  description: `${{ steps.parse.outputs.description }}`.substring(0, 1000),
-                  changelog: `${{ steps.parse.outputs.changelog }}`.substring(0, 1000),
-                  testing: `${{ steps.parse.outputs.testing }}`.substring(0, 1000),
                   current_version: '${{ steps.current.outputs.current_version }}',
-                  breaking_changes: '${{ steps.parse.outputs.breaking_changes }}' || 'No',
-                  breaking_details: `${{ steps.parse.outputs.breaking_details }}`.substring(0, 1000) || '',
-                  root_cause: `${{ steps.parse.outputs.root_cause }}`.substring(0, 1000) || '',
-                  fix_description: `${{ steps.parse.outputs.fix_description }}`.substring(0, 1000) || '',
-                  chore_type: '${{ steps.parse.outputs.chore_type }}' || '',
-                  user_impact: '${{ steps.parse.outputs.user_impact }}' || ''
+                  pr_data: JSON.stringify(prData),
+                  optional_data: JSON.stringify(optionalData)
                 }
               });
               
@@ -432,7 +442,7 @@ jobs:
               core.setOutput('pr_url', `https://github.com/${context.repo.owner}/${context.repo.repo}/actions`);
             } catch (error) {
               console.log('⚠️ Could not trigger PR workflow:', error.message);
-              console.log('This may be due to missing BOT_TOKEN secret.');
+              console.log('Error details:', error);
               core.setOutput('workflow_triggered', 'false');
               core.setOutput('pr_url', '');
             }

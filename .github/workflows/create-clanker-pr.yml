@@ -12,42 +12,19 @@ on:
       version:
         description: 'Version'
         required: true
-      author:
-        description: 'Author username'
-        required: true
       issue_number:
         description: 'Source issue number'
-        required: true
-      description:
-        description: 'Description'
-        required: true
-      changelog:
-        description: 'Changelog entry'
-        required: true
-      testing:
-        description: 'Testing details'
         required: true
       current_version:
         description: 'Current version'
         required: true
-      breaking_changes:
-        description: 'Breaking changes (Yes/No)'
-        default: 'No'
-      breaking_details:
-        description: 'Breaking change details'
-        default: ''
-      root_cause:
-        description: 'Root cause (for fixes)'
-        default: ''
-      fix_description:
-        description: 'Fix description'
-        default: ''
-      chore_type:
-        description: 'Chore type'
-        default: ''
-      user_impact:
-        description: 'User impact'
-        default: ''
+      pr_data:
+        description: 'PR data as JSON (description, changelog, testing, author)'
+        required: true
+      optional_data:
+        description: 'Optional data as JSON (breaking_changes, chore_type, etc)'
+        required: false
+        default: '{}'
 
 permissions:
   contents: write
@@ -61,6 +38,46 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.branch }}
+      
+      - name: Parse Input Data
+        id: parse
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Parse PR data
+            let prData = {};
+            let optionalData = {};
+            
+            try {
+              prData = JSON.parse(`${{ inputs.pr_data }}`);
+            } catch (e) {
+              console.log('Failed to parse pr_data:', e);
+              prData = {
+                description: 'No description provided',
+                changelog: 'See issue for details',
+                testing: 'See issue for details',
+                author: 'unknown'
+              };
+            }
+            
+            try {
+              optionalData = JSON.parse(`${{ inputs.optional_data }}`);
+            } catch (e) {
+              console.log('Failed to parse optional_data:', e);
+              optionalData = {};
+            }
+            
+            // Set outputs
+            core.setOutput('description', prData.description || '');
+            core.setOutput('changelog', prData.changelog || '');
+            core.setOutput('testing', prData.testing || '');
+            core.setOutput('author', prData.author || 'unknown');
+            core.setOutput('breaking_changes', optionalData.breaking_changes || 'No');
+            core.setOutput('breaking_details', optionalData.breaking_details || '');
+            core.setOutput('root_cause', optionalData.root_cause || '');
+            core.setOutput('fix_description', optionalData.fix_description || '');
+            core.setOutput('chore_type', optionalData.chore_type || '');
+            core.setOutput('user_impact', optionalData.user_impact || '');
       
       - name: Create Pull Request
         run: |
@@ -82,16 +99,16 @@ jobs:
           esac
           
           # Create PR body
-          cat > pr-body.md << 'EOF'
-          ## ${{ env.EMOJI }} Automated ${{ inputs.submission_type }} Submission
+          cat > pr-body.md << EOF
+          ## $EMOJI Automated $TYPE Submission
           
           This PR was automatically generated from issue #${{ inputs.issue_number }}.
           
           ### 📋 Summary
-          ${{ inputs.description }}
+          ${{ steps.parse.outputs.description }}
           
           ### 📝 Changelog
-          ${{ inputs.changelog }}
+          ${{ steps.parse.outputs.changelog }}
           
           ### 🏷️ Version
           **${{ inputs.current_version }}** → **${{ inputs.version }}**
@@ -100,41 +117,41 @@ jobs:
           
           # Add type-specific sections
           if [ "$TYPE" = "feature" ]; then
-            if [ "${{ inputs.breaking_changes }}" = "Yes" ]; then
-              cat >> pr-body.md << 'EOF'
+            if [ "${{ steps.parse.outputs.breaking_changes }}" = "Yes" ]; then
+              cat >> pr-body.md << EOF
           ### ⚠️ Breaking Changes
-          ${{ inputs.breaking_details }}
+          ${{ steps.parse.outputs.breaking_details }}
           
           EOF
             fi
           elif [ "$TYPE" = "fix" ]; then
-            if [ -n "${{ inputs.root_cause }}" ]; then
-              cat >> pr-body.md << 'EOF'
+            if [ -n "${{ steps.parse.outputs.root_cause }}" ]; then
+              cat >> pr-body.md << EOF
           ### 🔍 Root Cause
-          ${{ inputs.root_cause }}
+          ${{ steps.parse.outputs.root_cause }}
           
           ### ✅ Fix Details
-          ${{ inputs.fix_description }}
+          ${{ steps.parse.outputs.fix_description }}
           
           EOF
             fi
           elif [ "$TYPE" = "chore" ]; then
-            if [ -n "${{ inputs.chore_type }}" ]; then
-              cat >> pr-body.md << 'EOF'
+            if [ -n "${{ steps.parse.outputs.chore_type }}" ]; then
+              cat >> pr-body.md << EOF
           ### 🔧 Chore Type
-          ${{ inputs.chore_type }}
+          ${{ steps.parse.outputs.chore_type }}
           
           ### 👥 User Impact
-          ${{ inputs.user_impact }}
+          ${{ steps.parse.outputs.user_impact }}
           
           EOF
             fi
           fi
           
           # Add testing section
-          cat >> pr-body.md << 'EOF'
+          cat >> pr-body.md << EOF
           ### 🧪 Testing
-          ${{ inputs.testing }}
+          ${{ steps.parse.outputs.testing }}
           
           ### 📊 Validation
           - ✅ Semantic version validated
@@ -143,9 +160,6 @@ jobs:
           
           Closes #${{ inputs.issue_number }}
           EOF
-          
-          # Substitute emoji
-          sed -i "s/\${{ env.EMOJI }}/$EMOJI/g" pr-body.md
           
           # Create PR
           PR_URL=$(gh pr create \
@@ -156,5 +170,14 @@ jobs:
             --label "clanker-$TYPE")
           
           echo "Created PR: $PR_URL"
+          
+          # Post comment on issue
+          gh issue comment ${{ inputs.issue_number }} \
+            --repo ${{ github.repository }} \
+            --body "## 🎉 Pull Request Created!
+          
+          The automated PR has been successfully created: $PR_URL
+          
+          The PR will now go through review and CI/CD checks."
         env:
           GH_TOKEN: ${{ secrets.BOT_TOKEN }}
