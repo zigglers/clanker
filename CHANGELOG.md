@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.7] - 2025-08-25
+
+### Added
+- Support for multi-file tool installations
+- Package manager now downloads additional files (package.json, manifest.yml) along with index.js
+- Automatic npm dependency installation for tools with package.json
+- Tools with npm dependencies now work seamlessly out of the box
+
 ## [0.5.6] - 2025-08-25
 
 ### Fixed
