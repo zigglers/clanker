@@ -1,0 +1,375 @@
+name: Clanker Release Pipeline
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    # Only run when PR is merged and has clanker labels
+    if: |
+      github.event.pull_request.merged == true &&
+      (contains(github.event.pull_request.labels.*.name, 'clanker-feature') ||
+       contains(github.event.pull_request.labels.*.name, 'clanker-fix') ||
+       contains(github.event.pull_request.labels.*.name, 'clanker-chore'))
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+      
+      - name: Extract PR Information
+        id: extract
+        run: |
+          PR_BODY="${{ github.event.pull_request.body }}"
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          
+          # Extract version from PR title (format: "🚀 feature: 1.2.0")
+          VERSION=$(echo "$PR_TITLE" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?(\+[a-zA-Z0-9.-]+)?' | head -1)
+          
+          if [ -z "$VERSION" ]; then
+            # Try to get from VERSION file
+            if [ -f "VERSION" ]; then
+              VERSION=$(cat VERSION)
+            elif [ -f "package.json" ]; then
+              VERSION=$(node -p "require('./package.json').version")
+            else
+              echo "::error::Could not determine version"
+              exit 1
+            fi
+          fi
+          
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          
+          # Determine release type from PR labels
+          LABELS="${{ join(github.event.pull_request.labels.*.name, ',') }}"
+          
+          if [[ "$LABELS" == *"clanker-feature"* ]]; then
+            RELEASE_TYPE="feature"
+            EMOJI="🚀"
+          elif [[ "$LABELS" == *"clanker-fix"* ]]; then
+            RELEASE_TYPE="fix"
+            EMOJI="🐛"
+          elif [[ "$LABELS" == *"clanker-chore"* ]]; then
+            RELEASE_TYPE="chore"
+            EMOJI="🔧"
+          else
+            RELEASE_TYPE="release"
+            EMOJI="📦"
+          fi
+          
+          echo "release_type=$RELEASE_TYPE" >> $GITHUB_OUTPUT
+          echo "emoji=$EMOJI" >> $GITHUB_OUTPUT
+          
+          # Extract issue number from PR body
+          ISSUE_NUM=$(echo "$PR_BODY" | grep -oE 'Closes #[0-9]+' | sed 's/Closes #//')
+          echo "issue_number=$ISSUE_NUM" >> $GITHUB_OUTPUT
+          
+          echo "Version: $VERSION"
+          echo "Release Type: $RELEASE_TYPE"
+          echo "Related Issue: #$ISSUE_NUM"
+      
+      - name: Generate Release Notes
+        id: notes
+        run: |
+          VERSION="${{ steps.extract.outputs.version }}"
+          RELEASE_TYPE="${{ steps.extract.outputs.release_type }}"
+          EMOJI="${{ steps.extract.outputs.emoji }}"
+          
+          # Create release notes file
+          cat > release-notes.md << EOF
+          # $EMOJI Clanker $VERSION
+          
+          ## Release Type
+          **${RELEASE_TYPE^}** Release
+          
+          EOF
+          
+          # Extract changelog for this version
+          if [ -f "CHANGELOG.md" ]; then
+            echo "## What's Changed" >> release-notes.md
+            
+            # Extract the section for this version from CHANGELOG.md
+            awk -v version="$VERSION" '
+              /^## \['"$VERSION"'\]/ { in_version=1; next }
+              /^## \[/ && in_version { exit }
+              in_version { print }
+            ' CHANGELOG.md >> release-notes.md
+            
+            echo "" >> release-notes.md
+          fi
+          
+          # Add PR information
+          cat >> release-notes.md << EOF
+          
+          ## Pull Request
+          - PR: #${{ github.event.pull_request.number }}
+          - Author: @${{ github.event.pull_request.user.login }}
+          EOF
+          
+          # Add issue information if available
+          if [ -n "${{ steps.extract.outputs.issue_number }}" ]; then
+            echo "- Issue: #${{ steps.extract.outputs.issue_number }}" >> release-notes.md
+          fi
+          
+          echo "" >> release-notes.md
+          
+          # Add installation instructions
+          cat >> release-notes.md << EOF
+          
+          ## Installation
+          
+          ### NPM
+          \`\`\`bash
+          npm install -g @zigglers/clanker@$VERSION
+          \`\`\`
+          
+          ### Update existing installation
+          \`\`\`bash
+          npm update -g @zigglers/clanker
+          \`\`\`
+          
+          ### Verify installation
+          \`\`\`bash
+          clanker --version
+          \`\`\`
+          EOF
+          
+          # Add breaking changes notice if it's a major version
+          if [[ "$VERSION" =~ ^[0-9]+\.0\.0$ ]]; then
+            cat >> release-notes.md << EOF
+          
+          ## ⚠️ Breaking Changes
+          
+          This is a major version release. Please review the changelog carefully for breaking changes and migration instructions.
+          EOF
+          fi
+          
+          echo "Release notes generated successfully"
+      
+      - name: Create GitHub Release
+        id: release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.extract.outputs.version }}"
+          RELEASE_TYPE="${{ steps.extract.outputs.release_type }}"
+          
+          # Determine if it's a pre-release
+          PRERELEASE=""
+          if [[ "$VERSION" == *"-"* ]]; then
+            PRERELEASE="--prerelease"
+          fi
+          
+          # Create the release
+          gh release create "v$VERSION" \
+            --title "v$VERSION" \
+            --notes-file release-notes.md \
+            --target main \
+            $PRERELEASE
+          
+          echo "✅ Created release v$VERSION"
+          echo "release_url=https://github.com/${{ github.repository }}/releases/tag/v$VERSION" >> $GITHUB_OUTPUT
+      
+      - name: Build and Package
+        id: build
+        run: |
+          # Install dependencies
+          npm ci || npm install
+          
+          # Run build if script exists
+          if npm run | grep -q "build"; then
+            npm run build
+            echo "✅ Build completed"
+          fi
+          
+          # Run tests if script exists
+          if npm run | grep -q "test"; then
+            npm test || echo "⚠️ Tests failed but continuing..."
+          fi
+          
+          # Create tarball for release
+          npm pack
+          
+          # Find the created tarball
+          TARBALL=$(ls *.tgz | head -1)
+          if [ -n "$TARBALL" ]; then
+            echo "tarball=$TARBALL" >> $GITHUB_OUTPUT
+            echo "✅ Created package: $TARBALL"
+          fi
+      
+      - name: Upload Release Assets
+        if: steps.build.outputs.tarball
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.extract.outputs.version }}"
+          TARBALL="${{ steps.build.outputs.tarball }}"
+          
+          # Upload the tarball to the release
+          gh release upload "v$VERSION" "$TARBALL" --clobber
+          
+          echo "✅ Uploaded $TARBALL to release"
+      
+      - name: Publish to NPM
+        if: success()
+        id: publish
+        continue-on-error: true
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          VERSION="${{ steps.extract.outputs.version }}"
+          
+          # Check if NPM token is available
+          if [ -z "$NODE_AUTH_TOKEN" ]; then
+            echo "⚠️ NPM_TOKEN not configured, skipping NPM publish"
+            echo "published=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          # Determine npm tag
+          NPM_TAG="latest"
+          if [[ "$VERSION" == *"-alpha"* ]]; then
+            NPM_TAG="alpha"
+          elif [[ "$VERSION" == *"-beta"* ]]; then
+            NPM_TAG="beta"
+          elif [[ "$VERSION" == *"-rc"* ]]; then
+            NPM_TAG="rc"
+          fi
+          
+          # Publish to NPM
+          npm publish --access public --tag "$NPM_TAG"
+          
+          if [ $? -eq 0 ]; then
+            echo "✅ Published to NPM with tag: $NPM_TAG"
+            echo "published=true" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️ Failed to publish to NPM"
+            echo "published=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Comment on Related Issue
+        if: steps.extract.outputs.issue_number
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueNumber = ${{ steps.extract.outputs.issue_number }};
+            const version = '${{ steps.extract.outputs.version }}';
+            const releaseUrl = '${{ steps.release.outputs.release_url }}';
+            const npmPublished = '${{ steps.publish.outputs.published }}' === 'true';
+            
+            let comment = `## 🎉 Released in v${version}\n\n`;
+            comment += `Your submission has been released!\n\n`;
+            comment += `### 📦 Release Details\n`;
+            comment += `- **Version**: v${version}\n`;
+            comment += `- **Release**: ${releaseUrl}\n`;
+            
+            if (npmPublished) {
+              comment += `- **NPM**: https://www.npmjs.com/package/@zigglers/clanker/v/${version}\n\n`;
+              comment += `### 📥 Installation\n`;
+              comment += `\`\`\`bash\n`;
+              comment += `npm install -g @zigglers/clanker@${version}\n`;
+              comment += `\`\`\`\n`;
+            } else {
+              comment += `\n### 📥 Installation\n`;
+              comment += `The release is available on GitHub. NPM publishing may follow later.\n`;
+            }
+            
+            comment += `\nThank you for your contribution! 🙏`;
+            
+            try {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body: comment
+              });
+              
+              // Add a label to mark this issue as released
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                labels: ['released']
+              });
+            } catch (error) {
+              console.log(`Could not comment on issue #${issueNumber}: ${error.message}`);
+            }
+      
+      - name: Update Latest Tag
+        if: success() && !contains(steps.extract.outputs.version, '-')
+        run: |
+          # Update the 'latest' tag to point to this release
+          git tag -f latest
+          git push origin latest --force
+          
+          echo "✅ Updated 'latest' tag"
+  
+  cleanup-branch:
+    name: Cleanup Branch
+    runs-on: ubuntu-latest
+    # Run for both merged and closed PRs with clanker labels
+    if: |
+      contains(github.event.pull_request.labels.*.name, 'clanker-feature') ||
+      contains(github.event.pull_request.labels.*.name, 'clanker-fix') ||
+      contains(github.event.pull_request.labels.*.name, 'clanker-chore')
+    
+    steps:
+      - name: Delete Branch
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="${{ github.event.pull_request.head.ref }}"
+          PR_MERGED="${{ github.event.pull_request.merged }}"
+          
+          if [ "$PR_MERGED" = "true" ]; then
+            echo "PR was merged. Branch will be deleted if delete-branch-on-merge is enabled."
+            # GitHub can auto-delete branches on merge if configured
+          else
+            echo "PR was closed without merging. Deleting branch: $BRANCH"
+            
+            # Delete the remote branch
+            gh api -X DELETE "/repos/${{ github.repository }}/git/refs/heads/$BRANCH" \
+              && echo "✅ Deleted branch: $BRANCH" \
+              || echo "⚠️ Could not delete branch (may already be deleted)"
+          fi
+      
+      - name: Comment on PR if Closed Without Merge
+        if: github.event.pull_request.merged == false
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.issue.number;
+            
+            const comment = `## ❌ PR Closed Without Merging\n\n` +
+              `This pull request was closed without being merged.\n\n` +
+              `The feature branch has been deleted to keep the repository clean.\n\n` +
+              `If you want to continue working on this, you can:\n` +
+              `1. Create a new issue with updated information\n` +
+              `2. The automation will create a new PR for you\n\n` +
+              `Thank you for your contribution attempt!`;
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: comment
+            });

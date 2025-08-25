@@ -1,0 +1,120 @@
+name: 🐛 Bug Fix
+description: Submit a bug fix for Clanker
+title: "[Fix] "
+labels: ["clanker-fix"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Bug Fix Submission
+        Thank you for fixing a bug! Please provide the following information.
+
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: Bug Description
+      description: Describe the bug that this fix addresses
+      placeholder: |
+        What was broken? How did it manifest?
+        Include error messages, unexpected behavior, etc.
+    validations:
+      required: true
+
+  - type: textarea
+    id: root-cause
+    attributes:
+      label: Root Cause
+      description: Explain the root cause of the bug
+      placeholder: |
+        What was causing the bug?
+        Why did the previous code fail?
+    validations:
+      required: true
+
+  - type: textarea
+    id: fix-description
+    attributes:
+      label: Fix Description
+      description: Describe how this fix resolves the issue
+      placeholder: |
+        What changes were made?
+        How does this fix the problem?
+    validations:
+      required: true
+
+  - type: textarea
+    id: changelog
+    attributes:
+      label: Changelog Entry
+      description: Write the changelog entry for this fix (will be used in release notes)
+      placeholder: |
+        Example:
+        - Fixed issue where clanker would crash on Windows systems
+        - Resolved memory leak in file watcher
+        - Corrected TypeScript type definitions for API methods
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Semantic Version
+      description: Proposed semantic version for this release (patch version for fixes)
+      placeholder: "e.g., 1.1.1"
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: How can the bug be reproduced? (before the fix)
+      placeholder: |
+        1. Run command...
+        2. Observe error...
+        3. etc.
+    validations:
+      required: true
+
+  - type: textarea
+    id: testing
+    attributes:
+      label: Testing Verification
+      description: How was this fix tested?
+      placeholder: |
+        - Unit tests added/modified
+        - Manual testing performed
+        - Edge cases verified
+    validations:
+      required: true
+
+  - type: dropdown
+    id: affected-versions
+    attributes:
+      label: Affected Versions
+      description: Which versions are affected by this bug?
+      options:
+        - "Latest only"
+        - "Multiple recent versions"
+        - "All versions"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      description: Please confirm the following
+      options:
+        - label: I have identified the root cause
+          required: true
+        - label: I have tested the fix thoroughly
+          required: true
+        - label: I have included a changelog entry
+          required: true
+        - label: I have specified the semantic version
+          required: true
+        - label: The fix doesn't introduce new issues
+          required: true

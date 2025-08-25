@@ -1,0 +1,126 @@
+name: 🔧 Chore/Maintenance
+description: Submit a maintenance task or chore for Clanker
+title: "[Chore] "
+labels: ["clanker-chore"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Chore/Maintenance Submission
+        Thank you for helping maintain Clanker! Please provide the following information.
+
+  - type: dropdown
+    id: chore-type
+    attributes:
+      label: Chore Type
+      description: What type of maintenance task is this?
+      options:
+        - "Dependency updates"
+        - "Code refactoring"
+        - "Documentation updates"
+        - "Build/CI improvements"
+        - "Performance optimization"
+        - "Code cleanup"
+        - "Testing improvements"
+        - "Other"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Chore Description
+      description: Provide a clear description of the maintenance task
+      placeholder: |
+        What maintenance work is being done?
+        Why is this necessary?
+    validations:
+      required: true
+
+  - type: textarea
+    id: changes
+    attributes:
+      label: Changes Made
+      description: List the specific changes being made
+      placeholder: |
+        - Updated dependency X from version Y to Z
+        - Refactored module A for better readability
+        - Added missing TypeScript types
+        - Improved error handling in component B
+    validations:
+      required: true
+
+  - type: textarea
+    id: changelog
+    attributes:
+      label: Changelog Entry
+      description: Write the changelog entry for this chore (will be used in release notes)
+      placeholder: |
+        Example:
+        - Updated all dependencies to latest versions
+        - Refactored internal module structure for better maintainability
+        - Improved build process performance by 30%
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Semantic Version
+      description: Proposed semantic version (usually patch for chores, unless significant)
+      placeholder: "e.g., 1.1.1"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: user-impact
+    attributes:
+      label: User Impact
+      description: Does this chore affect end users?
+      options:
+        - "No user impact"
+        - "Minor improvements (performance, etc.)"
+        - "Visible improvements"
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-impact-details
+    attributes:
+      label: User Impact Details
+      description: If there is user impact, describe it
+      placeholder: |
+        How will users notice this change?
+        Any migration steps needed?
+
+  - type: textarea
+    id: testing
+    attributes:
+      label: Testing/Validation
+      description: How was this chore validated?
+      placeholder: |
+        - Tests still pass
+        - Build succeeds
+        - Performance metrics
+        - Manual verification steps
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      description: Please confirm the following
+      options:
+        - label: I have described the maintenance task clearly
+          required: true
+        - label: I have included a changelog entry
+          required: true
+        - label: I have specified the semantic version
+          required: true
+        - label: All tests pass after changes
+          required: true
+        - label: No functionality has been broken
+          required: true

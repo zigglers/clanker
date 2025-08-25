@@ -1,0 +1,503 @@
+name: Clanker Submission Pipeline
+
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  process-submission:
+    name: Process Clanker Submission
+    runs-on: ubuntu-latest
+    # Only run on issues with clanker labels
+    if: |
+      contains(github.event.issue.labels.*.name, 'clanker-feature') ||
+      contains(github.event.issue.labels.*.name, 'clanker-fix') ||
+      contains(github.event.issue.labels.*.name, 'clanker-chore')
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Parse Issue Content
+        id: parse
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const body = issue.body || '';
+            const labels = issue.labels.map(l => l.name);
+            
+            console.log('Issue body:', body);
+            console.log('Labels:', labels);
+            
+            // Determine submission type
+            let submissionType = '';
+            if (labels.includes('clanker-feature')) {
+              submissionType = 'feature';
+            } else if (labels.includes('clanker-fix')) {
+              submissionType = 'fix';
+            } else if (labels.includes('clanker-chore')) {
+              submissionType = 'chore';
+            }
+            
+            core.setOutput('submission_type', submissionType);
+            
+            // Parse fields from issue body
+            const parseField = (fieldName) => {
+              const patterns = [
+                new RegExp(`### ${fieldName}\\s*\\n\\n([^#]*?)(?=\\n\\n###|$)`, 's'),
+                new RegExp(`### ${fieldName}\\s*\\n([^#]*?)(?=\\n###|$)`, 's')
+              ];
+              
+              for (const regex of patterns) {
+                const match = body.match(regex);
+                if (match) {
+                  return match[1].trim();
+                }
+              }
+              return '';
+            };
+            
+            // Extract required fields based on type
+            const description = parseField('Feature Description') || 
+                              parseField('Bug Description') || 
+                              parseField('Chore Description');
+            const changelog = parseField('Changelog Entry');
+            const version = parseField('Semantic Version');
+            const testing = parseField('Testing Plan') || 
+                           parseField('Testing Verification') || 
+                           parseField('Testing/Validation');
+            
+            // For features, check breaking changes
+            const breakingChanges = parseField('Breaking Changes');
+            const breakingDetails = parseField('Breaking Change Details');
+            
+            // For fixes, get additional info
+            const rootCause = parseField('Root Cause');
+            const fixDescription = parseField('Fix Description');
+            
+            // For chores, get chore type
+            const choreType = parseField('Chore Type');
+            const userImpact = parseField('User Impact');
+            
+            // Validate required fields
+            if (!description || !changelog || !version) {
+              const missing = [];
+              if (!description) missing.push('Description');
+              if (!changelog) missing.push('Changelog Entry');
+              if (!version) missing.push('Semantic Version');
+              
+              core.setFailed(`Missing required fields: ${missing.join(', ')}`);
+              
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `## ❌ Missing Required Information\n\nPlease edit your issue to include:\n${missing.map(f => `- **${f}**`).join('\n')}\n\nUse the issue template as a guide.`
+              });
+              return;
+            }
+            
+            // Validate semantic version format
+            const semverRegex = /^\d+\.\d+\.\d+(-[a-zA-Z0-9.-]+)?(\+[a-zA-Z0-9.-]+)?$/;
+            if (!semverRegex.test(version)) {
+              core.setFailed('Invalid semantic version format');
+              
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `## ❌ Invalid Version Format\n\nThe version "${version}" is not a valid semantic version.\nPlease use the format: MAJOR.MINOR.PATCH (e.g., 1.2.3)`
+              });
+              return;
+            }
+            
+            // Output all parsed data
+            core.setOutput('description', description);
+            core.setOutput('changelog', changelog);
+            core.setOutput('version', version);
+            core.setOutput('testing', testing);
+            core.setOutput('breaking_changes', breakingChanges);
+            core.setOutput('breaking_details', breakingDetails);
+            core.setOutput('root_cause', rootCause);
+            core.setOutput('fix_description', fixDescription);
+            core.setOutput('chore_type', choreType);
+            core.setOutput('user_impact', userImpact);
+            core.setOutput('author', issue.user.login);
+            
+            console.log('Parsed data:', {
+              submissionType,
+              description,
+              changelog,
+              version,
+              testing
+            });
+      
+      - name: Get Current Version
+        id: current
+        run: |
+          # Try to get version from package.json
+          if [ -f "package.json" ]; then
+            CURRENT_VERSION=$(node -p "require('./package.json').version")
+          else
+            CURRENT_VERSION="0.0.0"
+          fi
+          
+          echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "Current version: $CURRENT_VERSION"
+      
+      - name: Validate Version Bump
+        id: validate
+        run: |
+          CURRENT="${{ steps.current.outputs.current_version }}"
+          NEW="${{ steps.parse.outputs.version }}"
+          TYPE="${{ steps.parse.outputs.submission_type }}"
+          
+          # Parse versions
+          IFS='.' read -ra CURRENT_PARTS <<< "$CURRENT"
+          IFS='.' read -ra NEW_PARTS <<< "$NEW"
+          
+          CURRENT_MAJOR=${CURRENT_PARTS[0]}
+          CURRENT_MINOR=${CURRENT_PARTS[1]}
+          CURRENT_PATCH=${CURRENT_PARTS[2]%%[-+]*}
+          
+          NEW_MAJOR=${NEW_PARTS[0]}
+          NEW_MINOR=${NEW_PARTS[1]}
+          NEW_PATCH=${NEW_PARTS[2]%%[-+]*}
+          
+          # Validate version bump based on type
+          VALID=true
+          MESSAGE=""
+          
+          if [ "$TYPE" = "fix" ] || [ "$TYPE" = "chore" ]; then
+            # For fixes and chores, typically patch bump
+            if [ "$NEW_MAJOR" -gt "$CURRENT_MAJOR" ] || [ "$NEW_MINOR" -gt "$CURRENT_MINOR" ]; then
+              MESSAGE="✅ Version bump valid (but larger than typical for $TYPE)"
+            elif [ "$NEW_PATCH" -gt "$CURRENT_PATCH" ] && [ "$NEW_MAJOR" -eq "$CURRENT_MAJOR" ] && [ "$NEW_MINOR" -eq "$CURRENT_MINOR" ]; then
+              MESSAGE="✅ Version bump valid (patch release)"
+            else
+              VALID=false
+              MESSAGE="❌ Invalid version bump. For $TYPE, expected patch bump from $CURRENT"
+            fi
+          elif [ "$TYPE" = "feature" ]; then
+            # For features, typically minor bump (or major if breaking)
+            BREAKING="${{ steps.parse.outputs.breaking_changes }}"
+            if [ "$BREAKING" = "Yes" ] && [ "$NEW_MAJOR" -gt "$CURRENT_MAJOR" ]; then
+              MESSAGE="✅ Version bump valid (major release with breaking changes)"
+            elif [ "$NEW_MINOR" -gt "$CURRENT_MINOR" ] && [ "$NEW_MAJOR" -eq "$CURRENT_MAJOR" ]; then
+              MESSAGE="✅ Version bump valid (minor release)"
+            elif [ "$NEW_PATCH" -gt "$CURRENT_PATCH" ] && [ "$NEW_MAJOR" -eq "$CURRENT_MAJOR" ] && [ "$NEW_MINOR" -eq "$CURRENT_MINOR" ]; then
+              MESSAGE="✅ Version bump valid (patch release for feature)"
+            else
+              VALID=false
+              if [ "$BREAKING" = "Yes" ]; then
+                MESSAGE="❌ Invalid version bump. Breaking changes require major version bump from $CURRENT"
+              else
+                MESSAGE="❌ Invalid version bump. Features typically require minor version bump from $CURRENT"
+              fi
+            fi
+          fi
+          
+          echo "valid=$VALID" >> $GITHUB_OUTPUT
+          echo "message=$MESSAGE" >> $GITHUB_OUTPUT
+          
+          if [ "$VALID" = "false" ]; then
+            echo "::error::$MESSAGE"
+            exit 1
+          fi
+      
+      - name: Create Feature Branch
+        if: success()
+        id: branch
+        run: |
+          TYPE="${{ steps.parse.outputs.submission_type }}"
+          VERSION="${{ steps.parse.outputs.version }}"
+          AUTHOR="${{ steps.parse.outputs.author }}"
+          
+          # Create branch name
+          BRANCH="$TYPE/$VERSION-by-$AUTHOR"
+          
+          # Configure git
+          git config user.name "Clanker Bot"
+          git config user.email "bot@clanker.dev"
+          
+          # Create and checkout branch
+          git checkout -b "$BRANCH"
+          
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+          echo "Created branch: $BRANCH"
+      
+      - name: Update Files
+        if: success()
+        id: update
+        run: |
+          VERSION="${{ steps.parse.outputs.version }}"
+          CHANGELOG="${{ steps.parse.outputs.changelog }}"
+          TYPE="${{ steps.parse.outputs.submission_type }}"
+          
+          # Update package.json if it exists
+          if [ -f "package.json" ]; then
+            # Update version in package.json
+            node -e "
+              const pkg = require('./package.json');
+              pkg.version = '$VERSION';
+              require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\\n');
+            "
+            echo "✅ Updated package.json"
+          fi
+          
+          # Update or create CHANGELOG.md
+          if [ ! -f "CHANGELOG.md" ]; then
+            cat > CHANGELOG.md << 'EOF'
+          # Changelog
+          
+          All notable changes to Clanker will be documented in this file.
+          
+          The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+          and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+          
+          EOF
+          fi
+          
+          # Prepare changelog entry
+          DATE=$(date +%Y-%m-%d)
+          SECTION=""
+          
+          case "$TYPE" in
+            feature)
+              SECTION="Added"
+              ;;
+            fix)
+              SECTION="Fixed"
+              ;;
+            chore)
+              SECTION="Changed"
+              ;;
+          esac
+          
+          # Add new version section to changelog
+          TEMP_FILE=$(mktemp)
+          
+          # Check if version already exists
+          if grep -q "## \[$VERSION\]" CHANGELOG.md; then
+            echo "Version $VERSION already in changelog, updating..."
+            # Update existing version section
+            awk -v version="$VERSION" -v section="$SECTION" -v changelog="$CHANGELOG" '
+              /^## \['"$VERSION"'\]/ { in_version=1 }
+              /^## \[/ && !/^## \['"$VERSION"'\]/ { in_version=0 }
+              { print }
+              in_version && /^### '"$SECTION"'$/ { 
+                print changelog
+                found=1
+              }
+              END {
+                if (in_version && !found) {
+                  print "\n### " section "\n" changelog
+                }
+              }
+            ' CHANGELOG.md > "$TEMP_FILE"
+          else
+            # Add new version section
+            awk -v version="$VERSION" -v date="$DATE" -v section="$SECTION" -v changelog="$CHANGELOG" '
+              /^## \[/ && !done {
+                print "## [" version "] - " date "\n\n### " section "\n" changelog "\n"
+                done=1
+              }
+              { print }
+              END {
+                if (!done) {
+                  print "## [" version "] - " date "\n\n### " section "\n" changelog
+                }
+              }
+            ' CHANGELOG.md > "$TEMP_FILE"
+          fi
+          
+          mv "$TEMP_FILE" CHANGELOG.md
+          echo "✅ Updated CHANGELOG.md"
+          
+          # Update VERSION file if it exists or create it
+          echo "$VERSION" > VERSION
+          echo "✅ Updated VERSION file"
+      
+      - name: Commit Changes
+        if: success()
+        run: |
+          git add -A
+          git commit -m "${{ steps.parse.outputs.submission_type }}: version ${{ steps.parse.outputs.version }}
+          
+          ${{ steps.parse.outputs.changelog }}
+          
+          Submitted by @${{ steps.parse.outputs.author }} via issue #${{ github.event.issue.number }}"
+          
+          git push origin "${{ steps.branch.outputs.branch }}"
+      
+      - name: Create Pull Request
+        if: success()
+        id: pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TYPE="${{ steps.parse.outputs.submission_type }}"
+          VERSION="${{ steps.parse.outputs.version }}"
+          BRANCH="${{ steps.branch.outputs.branch }}"
+          
+          # Determine emoji based on type
+          case "$TYPE" in
+            feature)
+              EMOJI="🚀"
+              ;;
+            fix)
+              EMOJI="🐛"
+              ;;
+            chore)
+              EMOJI="🔧"
+              ;;
+          esac
+          
+          # Create PR body
+          cat > pr-body.md << EOF
+          ## $EMOJI Automated $TYPE Submission
+          
+          This PR was automatically generated from issue #${{ github.event.issue.number }}.
+          
+          ### 📋 Summary
+          ${{ steps.parse.outputs.description }}
+          
+          ### 📝 Changelog
+          ${{ steps.parse.outputs.changelog }}
+          
+          ### 🏷️ Version
+          **${{ steps.current.outputs.current_version }}** → **$VERSION**
+          
+          EOF
+          
+          # Add type-specific sections
+          if [ "$TYPE" = "feature" ]; then
+            if [ "${{ steps.parse.outputs.breaking_changes }}" = "Yes" ]; then
+              echo "### ⚠️ Breaking Changes" >> pr-body.md
+              echo "${{ steps.parse.outputs.breaking_details }}" >> pr-body.md
+              echo "" >> pr-body.md
+            fi
+          elif [ "$TYPE" = "fix" ]; then
+            echo "### 🔍 Root Cause" >> pr-body.md
+            echo "${{ steps.parse.outputs.root_cause }}" >> pr-body.md
+            echo "" >> pr-body.md
+            echo "### ✅ Fix Details" >> pr-body.md
+            echo "${{ steps.parse.outputs.fix_description }}" >> pr-body.md
+            echo "" >> pr-body.md
+          elif [ "$TYPE" = "chore" ]; then
+            echo "### 🔧 Chore Type" >> pr-body.md
+            echo "${{ steps.parse.outputs.chore_type }}" >> pr-body.md
+            echo "" >> pr-body.md
+            echo "### 👥 User Impact" >> pr-body.md
+            echo "${{ steps.parse.outputs.user_impact }}" >> pr-body.md
+            echo "" >> pr-body.md
+          fi
+          
+          # Add testing section
+          echo "### 🧪 Testing" >> pr-body.md
+          echo "${{ steps.parse.outputs.testing }}" >> pr-body.md
+          echo "" >> pr-body.md
+          
+          echo "### 📊 Validation" >> pr-body.md
+          echo "- ✅ Semantic version validated" >> pr-body.md
+          echo "- ✅ Changelog updated" >> pr-body.md
+          echo "- ✅ Version files updated" >> pr-body.md
+          echo "" >> pr-body.md
+          
+          echo "Closes #${{ github.event.issue.number }}" >> pr-body.md
+          
+          # Create PR
+          PR_URL=$(gh pr create \
+            --base main \
+            --head "$BRANCH" \
+            --title "$EMOJI $TYPE: $VERSION" \
+            --body-file pr-body.md \
+            --label "clanker-$TYPE")
+          
+          echo "pr_url=$PR_URL" >> $GITHUB_OUTPUT
+          echo "Created PR: $PR_URL"
+      
+      - name: Comment on Issue
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const success = ${{ steps.pr.outcome == 'success' }};
+            
+            let comment = '';
+            
+            if (success) {
+              comment = `## ✅ Submission Processed Successfully!\n\n`;
+              comment += `### 📦 Submission Details\n`;
+              comment += `- **Type**: ${{ steps.parse.outputs.submission_type }}\n`;
+              comment += `- **Version**: ${{ steps.parse.outputs.version }}\n`;
+              comment += `- **Author**: @${{ steps.parse.outputs.author }}\n\n`;
+              
+              comment += `### 📊 Pipeline Status\n`;
+              comment += `- ✅ Issue parsed successfully\n`;
+              comment += `- ✅ Version validated\n`;
+              comment += `- ✅ Branch created: \`${{ steps.branch.outputs.branch }}\`\n`;
+              comment += `- ✅ Files updated\n`;
+              comment += `- ✅ Pull request created\n\n`;
+              
+              comment += `### 🔗 Pull Request\n`;
+              comment += `${{ steps.pr.outputs.pr_url }}\n\n`;
+              
+              comment += `### 🎯 Next Steps\n`;
+              comment += `1. The PR will be reviewed by maintainers\n`;
+              comment += `2. CI/CD checks will run automatically\n`;
+              comment += `3. Once approved and merged, a release will be created\n`;
+              comment += `4. The new version will be available for users\n\n`;
+              
+              comment += `Thank you for your contribution! 🙏`;
+              
+              // Close the issue
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                state: 'closed'
+              });
+              
+            } else {
+              comment = `## ❌ Submission Processing Failed\n\n`;
+              
+              const parseSuccess = ${{ steps.parse.outcome == 'success' }};
+              const validateSuccess = ${{ steps.validate.outcome == 'success' }};
+              
+              comment += `### 📊 Pipeline Status\n`;
+              comment += `- ${parseSuccess ? '✅' : '❌'} Issue parsing\n`;
+              comment += `- ${validateSuccess ? '✅' : '❌'} Version validation\n`;
+              
+              if (!parseSuccess) {
+                comment += `\n### ❌ Parsing Error\n`;
+                comment += `Please ensure all required fields are filled correctly.\n`;
+              } else if (!validateSuccess) {
+                comment += `\n### ❌ Version Validation Error\n`;
+                comment += `${{ steps.validate.outputs.message }}\n`;
+              }
+              
+              comment += `\n### 📝 Action Required\n`;
+              comment += `Please edit your issue to fix the errors and the pipeline will run again automatically.`;
+            }
+            
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });

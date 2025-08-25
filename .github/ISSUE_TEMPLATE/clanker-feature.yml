@@ -1,0 +1,103 @@
+name: 🚀 Feature Request
+description: Submit a new feature for Clanker
+title: "[Feature] "
+labels: ["clanker-feature"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Feature Submission
+        Thank you for submitting a feature request! Please provide the following information.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Feature Description
+      description: Provide a clear and detailed description of the feature
+      placeholder: |
+        Describe what the feature does, why it's needed, and how it improves Clanker.
+        Be as detailed as possible.
+    validations:
+      required: true
+
+  - type: textarea
+    id: changelog
+    attributes:
+      label: Changelog Entry
+      description: Write the changelog entry for this feature (will be used in release notes)
+      placeholder: |
+        Example:
+        - Added support for TypeScript configuration files
+        - Implemented new `clanker init` command for project initialization
+        - Enhanced error messages with helpful suggestions
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Semantic Version
+      description: Proposed semantic version for this release (current version will be shown in workflow)
+      placeholder: "e.g., 1.2.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: breaking
+    attributes:
+      label: Breaking Changes
+      description: Does this feature introduce breaking changes?
+      options:
+        - "No"
+        - "Yes"
+    validations:
+      required: true
+
+  - type: textarea
+    id: breaking-details
+    attributes:
+      label: Breaking Change Details
+      description: If yes, describe the breaking changes and migration path
+      placeholder: |
+        Describe what will break and how users should migrate.
+        This will be included in the release notes.
+
+  - type: textarea
+    id: implementation
+    attributes:
+      label: Implementation Details
+      description: Provide technical implementation details (optional but recommended)
+      placeholder: |
+        - Files that need to be modified
+        - New dependencies required
+        - Architecture considerations
+        - Test requirements
+
+  - type: textarea
+    id: testing
+    attributes:
+      label: Testing Plan
+      description: How should this feature be tested?
+      placeholder: |
+        Describe test scenarios, edge cases, and validation steps
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      description: Please confirm the following
+      options:
+        - label: I have searched existing issues to avoid duplicates
+          required: true
+        - label: I have provided a clear feature description
+          required: true
+        - label: I have included a changelog entry
+          required: true
+        - label: I have specified the semantic version
+          required: true
+        - label: I have described the testing plan
+          required: true
