@@ -100,9 +100,9 @@ export class SelfUpdater {
         console.log('📥 Downloading latest source from GitHub...');
         await this.cloneRepository(tempDir, updateInfo.latestVersion);
         
-        // Install dependencies
+        // Install dependencies (including dev dependencies for building)
         console.log('📦 Installing dependencies...');
-        execSync('npm install --production', {
+        execSync('npm install', {
           cwd: path.join(tempDir, 'clanker'),
           stdio: 'inherit'
         });
