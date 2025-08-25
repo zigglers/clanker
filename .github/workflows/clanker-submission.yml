@@ -402,22 +402,34 @@ jobs:
           github-token: ${{ secrets.BOT_TOKEN || secrets.GITHUB_TOKEN }}
           script: |
             try {
+              // Safely escape special characters for JavaScript strings
+              const escapeForJs = (str) => {
+                if (!str) return '';
+                return str.replace(/\\/g, '\\\\')
+                         .replace(/`/g, '\\`')
+                         .replace(/\$/g, '\\$')
+                         .replace(/'/g, "\\'")
+                         .replace(/"/g, '\\"')
+                         .replace(/\n/g, '\\n')
+                         .replace(/\r/g, '\\r');
+              };
+              
               // Prepare PR data as JSON
               const prData = {
-                description: `${{ steps.parse.outputs.description }}`.substring(0, 500),
-                changelog: `${{ steps.parse.outputs.changelog }}`.substring(0, 500),
-                testing: `${{ steps.parse.outputs.testing }}`.substring(0, 500),
-                author: '${{ steps.parse.outputs.author }}'
+                description: escapeForJs(`${{ steps.parse.outputs.description }}`).substring(0, 500),
+                changelog: escapeForJs(`${{ steps.parse.outputs.changelog }}`).substring(0, 500),
+                testing: escapeForJs(`${{ steps.parse.outputs.testing }}`).substring(0, 500),
+                author: escapeForJs('${{ steps.parse.outputs.author }}')
               };
               
               // Prepare optional data as JSON
               const optionalData = {
-                breaking_changes: '${{ steps.parse.outputs.breaking_changes }}' || 'No',
-                breaking_details: `${{ steps.parse.outputs.breaking_details }}`.substring(0, 500) || '',
-                root_cause: `${{ steps.parse.outputs.root_cause }}`.substring(0, 500) || '',
-                fix_description: `${{ steps.parse.outputs.fix_description }}`.substring(0, 500) || '',
-                chore_type: '${{ steps.parse.outputs.chore_type }}' || '',
-                user_impact: '${{ steps.parse.outputs.user_impact }}' || ''
+                breaking_changes: escapeForJs('${{ steps.parse.outputs.breaking_changes }}') || 'No',
+                breaking_details: escapeForJs(`${{ steps.parse.outputs.breaking_details }}`).substring(0, 500) || '',
+                root_cause: escapeForJs(`${{ steps.parse.outputs.root_cause }}`).substring(0, 500) || '',
+                fix_description: escapeForJs(`${{ steps.parse.outputs.fix_description }}`).substring(0, 500) || '',
+                chore_type: escapeForJs('${{ steps.parse.outputs.chore_type }}') || '',
+                user_impact: escapeForJs('${{ steps.parse.outputs.user_impact }}') || ''
               };
               
               // Trigger the PR creation workflow
