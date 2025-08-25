@@ -398,38 +398,37 @@ jobs:
         if: success()
         id: pr
         uses: actions/github-script@v7
+        env:
+          DESCRIPTION: ${{ steps.parse.outputs.description }}
+          CHANGELOG: ${{ steps.parse.outputs.changelog }}
+          TESTING: ${{ steps.parse.outputs.testing }}
+          AUTHOR: ${{ steps.parse.outputs.author }}
+          BREAKING_CHANGES: ${{ steps.parse.outputs.breaking_changes }}
+          BREAKING_DETAILS: ${{ steps.parse.outputs.breaking_details }}
+          ROOT_CAUSE: ${{ steps.parse.outputs.root_cause }}
+          FIX_DESCRIPTION: ${{ steps.parse.outputs.fix_description }}
+          CHORE_TYPE: ${{ steps.parse.outputs.chore_type }}
+          USER_IMPACT: ${{ steps.parse.outputs.user_impact }}
         with:
           github-token: ${{ secrets.BOT_TOKEN || secrets.GITHUB_TOKEN }}
           script: |
             try {
-              // Safely escape special characters for JavaScript strings
-              const escapeForJs = (str) => {
-                if (!str) return '';
-                return str.replace(/\\/g, '\\\\')
-                         .replace(/`/g, '\\`')
-                         .replace(/\$/g, '\\$')
-                         .replace(/'/g, "\\'")
-                         .replace(/"/g, '\\"')
-                         .replace(/\n/g, '\\n')
-                         .replace(/\r/g, '\\r');
-              };
-              
-              // Prepare PR data as JSON
+              // Prepare PR data as JSON from environment variables
               const prData = {
-                description: escapeForJs(`${{ steps.parse.outputs.description }}`).substring(0, 500),
-                changelog: escapeForJs(`${{ steps.parse.outputs.changelog }}`).substring(0, 500),
-                testing: escapeForJs(`${{ steps.parse.outputs.testing }}`).substring(0, 500),
-                author: escapeForJs('${{ steps.parse.outputs.author }}')
+                description: (process.env.DESCRIPTION || '').substring(0, 500),
+                changelog: (process.env.CHANGELOG || '').substring(0, 500),
+                testing: (process.env.TESTING || '').substring(0, 500),
+                author: process.env.AUTHOR || 'github-actions'
               };
               
-              // Prepare optional data as JSON
+              // Prepare optional data as JSON from environment variables
               const optionalData = {
-                breaking_changes: escapeForJs('${{ steps.parse.outputs.breaking_changes }}') || 'No',
-                breaking_details: escapeForJs(`${{ steps.parse.outputs.breaking_details }}`).substring(0, 500) || '',
-                root_cause: escapeForJs(`${{ steps.parse.outputs.root_cause }}`).substring(0, 500) || '',
-                fix_description: escapeForJs(`${{ steps.parse.outputs.fix_description }}`).substring(0, 500) || '',
-                chore_type: escapeForJs('${{ steps.parse.outputs.chore_type }}') || '',
-                user_impact: escapeForJs('${{ steps.parse.outputs.user_impact }}') || ''
+                breaking_changes: process.env.BREAKING_CHANGES || 'No',
+                breaking_details: (process.env.BREAKING_DETAILS || '').substring(0, 500),
+                root_cause: (process.env.ROOT_CAUSE || '').substring(0, 500),
+                fix_description: (process.env.FIX_DESCRIPTION || '').substring(0, 500),
+                chore_type: process.env.CHORE_TYPE || '',
+                user_impact: process.env.USER_IMPACT || ''
               };
               
               // Trigger the PR creation workflow
