@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Automatic npm dependency installation for tools with package.json
 - Tools with npm dependencies now work seamlessly out of the box
 
+### Fixed
+- Fixed tools with npm dependencies failing to load
+- Fixed package.json files not being downloaded from registry
+- Improved dependency installation process with better error handling
 ## [0.5.6] - 2025-08-25
 
 ### Fixed

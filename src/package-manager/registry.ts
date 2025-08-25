@@ -261,6 +261,45 @@ export class RegistryClient {
   }
 
   /**
+   * Download a specific file for a tool from repositories
+   */
+  async downloadToolFile(tool: ToolIdentifier, version: string, fileName: string): Promise<Buffer | null> {
+    const repositories = await this.repoManager.getRepositories();
+    
+    for (const repo of repositories) {
+      try {
+        // Try GitHub auth for private repos
+        if (repo.url.includes('github.com')) {
+          try {
+            const filePath = `tools/${tool.org}/${tool.name}/${version}/${fileName}`;
+            debug.log(`[Registry] Downloading ${fileName} for ${tool.org}/${tool.name}@${version} via GitHub auth`);
+            const buffer = await this.githubAuth.downloadFromGitHub(repo.url, filePath);
+            return buffer;
+          } catch (authError) {
+            debug.log(`[Registry] GitHub auth download failed for ${fileName}:`, authError);
+          }
+        }
+        
+        // Fallback to raw content
+        const registryUrl = this.getRegistryUrl(repo.url);
+        const url = `${registryUrl}/tools/${tool.org}/${tool.name}/${version}/${fileName}`;
+        
+        debug.log(`[Registry] Trying to download ${fileName} from ${url}`);
+        
+        const response = await fetch(url);
+        if (response.ok) {
+          const buffer = Buffer.from(await response.arrayBuffer());
+          return buffer;
+        }
+      } catch (error) {
+        debug.log(`[Registry] Failed to download ${fileName} from ${repo.name}:`, error);
+      }
+    }
+    
+    return null;
+  }
+
+  /**
    * Download a tool file from repositories
    */
   async downloadTool(tool: ToolIdentifier, version: string): Promise<Buffer> {
