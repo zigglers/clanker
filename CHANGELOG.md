@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] - 2025-08-25
+
+### Added
+- Added arrow key navigation for cursor movement in input box
+- Added Cmd+Left/Right (Mac) and Home/End shortcuts to jump to start/end of line
+- Added Ctrl+Left/Right shortcuts to jump by word boundaries
+- Improved cursor display with inverse character highlighting
+- Fixed backspace to delete at cursor position instead of always at end
+
 ## [0.5.0] - 2025-08-25
 
 ### Added
