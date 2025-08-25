@@ -1,47 +1,21 @@
-<h1>⚠️ PROJECT DISCONTINUED ⚠️</h1>
+# 🤖 Clanker
 
 <div align="center">
-  <h2>This project has been discontinued and is no longer maintained.</h2>
-  <p><strong>Please look elsewhere for alternatives.</strong></p>
+  <h3>AI agents that actually <em>do</em> things</h3>
+  <p>Not just suggestions—real actions, real changes, real time.</p>
+  
+  <p>
+    <img alt="npm version" src="https://img.shields.io/npm/v/@ziggler/clanker?style=flat-square&color=00D9FF">
+    <img alt="license" src="https://img.shields.io/badge/license-MIT-green?style=flat-square">
+    <img alt="node version" src="https://img.shields.io/node/v/@ziggler/clanker?style=flat-square&color=43B02A">
+    <img alt="downloads" src="https://img.shields.io/npm/dm/@ziggler/clanker?style=flat-square&color=FF6B6B">
+    <img alt="build status" src="https://img.shields.io/github/actions/workflow/status/zigglers/clanker/clanker-release.yml?style=flat-square">
+  </p>
 </div>
-
-## Recommended Alternatives
-
-We recommend using one of these actively maintained alternatives:
-
-- **[grokcli](https://github.com/grokcli/grokcli)** - A powerful CLI tool for interacting with AI models
-- **[Claude Code](https://claude.ai)** - Anthropic's coding assistant with excellent capabilities
-- **[Cursor](https://cursor.sh)** - An AI-powered code editor
-- **[GitHub Copilot](https://github.com/features/copilot)** - AI pair programming in your IDE
 
 ---
 
-<details>
-<summary>Original README (Archived)</summary>
-
-<h1>Clanker</h1>
-  <p>
-    <img alt="npm version" src="https://img.shields.io/npm/v/@ziggler/clanker?style=flat-square&color=00D9FF">
-    <img alt="license" src="https://img.shields.io/badge/license-PROPRIETARY-red?style=flat-square">
-    <img alt="node version" src="https://img.shields.io/node/v/@ziggler/clanker?style=flat-square&color=43B02A">
-    <img alt="downloads" src="https://img.shields.io/npm/dm/@ziggler/clanker?style=flat-square&color=FF6B6B">
-  </p>
-<div align="right">
-
-  <h3>AI agents that actually <em>do</em> things</h3>
-  <p>Not just suggestions—real actions, real changes, real time.</p>
-</div>
-
-> Want to use it in __**cursor**__? No problem!
-
-https://github.com/user-attachments/assets/6f0bce3f-13dd-483d-ba99-4017f953f9a4
-
-## Standard tty/(kitty) terminal 
-
-https://github.com/user-attachments/assets/2465c9b7-8f13-4a39-9486-f7ca032dadc4
-
-
-## Quick Start
+## 🚀 Quick Start
 
 ```bash
 # Install Clanker globally
@@ -60,20 +34,17 @@ clanker
 
 Clanker will guide you through API key setup on first run.
 
-## What's New
+## 📺 Demo
 
-### v0.3.1
-- 🔄 **Update All Tools**: Update all installed tools at once with `clanker --update`
-- 🚀 **Self-Update**: Keep clanker up-to-date with `clanker -U` or `clanker upgrade`
+### Works in Any Terminal (Including Cursor!)
 
-### v0.3.0
-- 🪝 **Hook System**: Comprehensive event-driven architecture for extending Clanker
-- 💾 **Session Management**: Persistent chat sessions with auto-save and history
-- 📦 **Local Tool Installation**: Install tools directly from local directories with `--local`
-- 🔧 **Enhanced Tool Context**: Tools can now execute other tools and access the hook system
-- 🔗 **Tool Dependencies**: Tools can declare dependencies that are automatically installed
+https://github.com/user-attachments/assets/6f0bce3f-13dd-483d-ba99-4017f953f9a4
 
-## What Can It Do?
+### Standard TTY/Kitty Terminal
+
+https://github.com/user-attachments/assets/2465c9b7-8f13-4a39-9486-f7ca032dadc4
+
+## 🎯 What Can It Do?
 
 ```bash
 # Refactor code intelligently
@@ -106,13 +77,13 @@ Clanker will guide you through API key setup on first run.
 ✓ Grouped by priority and file location
 ```
 
-## Key Features
+## ✨ Key Features
 
 ### 🧠 **Intelligent File Editing**
 Advanced order-invariant diff algorithm for reliable file editing. Multiple edit strategies ensure changes are applied correctly even in complex scenarios.
 
 ### 🛠️ **Extensible Tool System**
-Clanker uses a modular tool system where every action is performed by a tool. Tools are distributed through the package registry and can be easily installed.
+Modular architecture where every action is performed by a tool. Tools are distributed through our package registry and can be easily installed, updated, or removed.
 
 ### 🎨 **Beautiful Terminal UI**
 React-powered terminal interface with:
@@ -127,7 +98,13 @@ React-powered terminal interface with:
 - Full operation history
 - Built-in safeguards against destructive operations
 
-## Tool Ecosystem
+### 🔄 **Self-Updating**
+Clanker can update itself directly from GitHub releases:
+```bash
+clanker upgrade  # or clanker -U
+```
+
+## 📦 Tool Ecosystem
 
 ### Package Manager Commands
 
@@ -137,11 +114,11 @@ clanker -A              # or clanker --list-available
 clanker -A 2           # Show page 2 of available tools
 
 # Search for specific tools
-clanker -S bash         # or clanker --search bash
+clanker -S bash        # or clanker --search bash
 clanker -S "todo"      # Search for todo-related tools
 
 # Install tools from the registry
-clanker -I ziggle-dev/bash              # or clanker --install ziggle-dev/bash
+clanker -I ziggle-dev/bash              # or clanker --install
 clanker -I ziggle-dev/bash@1.0.0        # Install specific version
 
 # List installed tools
@@ -155,83 +132,92 @@ clanker --update ziggle-dev/bash        # Update specific tool
 clanker --update                        # Update all installed tools
 
 # Upgrade clanker itself
-clanker -U                              # or clanker --upgrade
-clanker upgrade                         # or clanker self-update
+clanker -U                              # or clanker upgrade
+clanker self-update                     # Alternative command
 
 # Clear package cache
 clanker --clear-cache
 ```
 
-### Available Tools
+### Essential Tools
 
-Clanker uses an opt-in tool system. Install only the tools you need:
-
-**Essential Tools:**
-- **ziggle-dev/bash** - Execute shell commands safely
-- **ziggle-dev/view-file** - Read and analyze files
-- **ziggle-dev/write-to-file** - Create or overwrite files
-- **ziggle-dev/multi-edit** - Advanced file editing with conflict resolution
-- **ziggle-dev/search** - Fast code search with ripgrep
+**Core Tools:**
+- `ziggle-dev/bash` - Execute shell commands safely
+- `ziggle-dev/view-file` - Read and analyze files
+- `ziggle-dev/write-to-file` - Create or overwrite files
+- `ziggle-dev/multi-edit` - Advanced file editing with conflict resolution
+- `ziggle-dev/search` - Fast code search with ripgrep
 
 **File Management:**
-- **ziggle-dev/list** - Browse directory contents
-- **ziggle-dev/pwd** - Show current directory
-- **ziggle-dev/remove** - Delete files and directories
+- `ziggle-dev/list` - Browse directory contents
+- `ziggle-dev/pwd` - Show current directory
+- `ziggle-dev/remove` - Delete files and directories
 
 **Task Management:**
-- **ziggle-dev/create-todo-list** - Create task lists
-- **ziggle-dev/update-todo-list** - Update task status
+- `ziggle-dev/create-todo-list` - Create task lists
+- `ziggle-dev/update-todo-list` - Update task status
 
 **Utilities:**
-- **ziggle-dev/input** - Get user input during operations
-- **ziggle-dev/summarize** - Summarize long content (coming soon)
+- `ziggle-dev/input` - Get user input during operations
+- `ziggle-dev/summarize` - Summarize long content
+- `ziggle-dev/elevenlabs-tts` - Text-to-speech generation
+- `ziggle-dev/web-search` - Search the web for information
 
-View all available tools with `clanker -A` or `clanker --list-available`
+Browse the full registry at [github.com/zigglers/rachet](https://github.com/zigglers/rachet)
 
-### Creating Your Own Tools
+## 🔧 Creating Your Own Tools
 
-Create and share your own tools with the community:
+### Quick Start with Tool Creation Wizard
 
 ```bash
-# Use the tool creation wizard
+# Use the interactive tool creation wizard
 npx create-clanker-tool my-awesome-tool
 
-# Or start from template
-git clone https://github.com/zigglers/rachet-tool my-tool
-cd my-tool
-
-# Install dependencies
-npm install
-
 # Test locally
+cd my-awesome-tool
+npm install
 npm run build
 clanker -I ./  # Install from current directory
 
-# Publish to registry
-npm run publish
+# Submit to registry
+# Create an issue at https://github.com/zigglers/rachet
+```
+
+### Tool Development
+
+Tools are simple JavaScript/TypeScript modules that export a default function:
+
+```typescript
+export default async function(args: ToolArguments, context: ToolContext) {
+  // Your tool logic here
+  return {
+    success: true,
+    output: "Tool executed successfully!"
+  };
+}
 ```
 
 Visit the [Tool Development Guide](https://github.com/zigglers/clanker/wiki/Tool-Development) for detailed instructions.
 
-## Hook System
+## 🪝 Hook System
 
-Clanker v0.3.0 introduces a powerful hook system that allows tools and users to extend functionality through event-driven programming.
+Extend Clanker's functionality through event-driven programming:
 
-### Hook Events
+### Available Hook Events
 
-- **PreToolUse**: Fired before any tool execution (can block or modify)
-- **PostToolUse**: Fired after tool execution (can process results)
-- **PreMessage**: Fired before messages are added to the conversation
-- **PostMessage**: Fired after messages are processed
-- **SessionStart**: Fired when a session begins
-- **UserPromptSubmit**: Fired when user submits a prompt
+- **PreToolUse**: Before any tool execution (can block or modify)
+- **PostToolUse**: After tool execution (can process results)
+- **PreMessage**: Before messages are added to the conversation
+- **PostMessage**: After messages are processed
+- **SessionStart**: When a session begins
+- **UserPromptSubmit**: When user submits a prompt
 
 ### Configuring Hooks
 
-Add hooks to your settings files:
+Add hooks to your settings:
 
 ```json
-// ~/.clanker/settings.json or project .clanker/settings.json
+// ~/.clanker/settings.json
 {
   "hooks": {
     "PreToolUse": [
@@ -247,193 +233,80 @@ Add hooks to your settings files:
 }
 ```
 
-### Dynamic Hook Registration
+## 💾 Session Management
 
-Tools can register hooks programmatically:
+Clanker automatically saves your conversations:
 
-```typescript
-export default async function(args: ToolArguments, context: ToolContext) {
-  // Register a hook
-  context.hooks.register({
-    id: 'my-hook',
-    name: 'My Custom Hook',
-    event: HookEvent.PostMessage,
-    handler: async (input, context) => {
-      // Hook logic here
-      return { continue: true };
-    }
-  });
-}
-```
-
-### Local Tool Development
-
-Develop and test tools locally before publishing:
-
-```bash
-# Install a tool from local directory
-clanker install --local ./my-tool
-
-# The tool is installed with its version from package.json
-clanker list  # Shows: my-org/my-tool@1.0.0
-```
-
-## Session Management
-
-Clanker now automatically saves your conversations and maintains session history:
-
-- Sessions are saved to `~/.clanker/sessions/`
-- Auto-save every 30 seconds (configurable)
+- Sessions saved to `~/.clanker/sessions/`
+- Auto-save every 30 seconds
 - Resume previous sessions with context
 - Export transcripts as JSONL
 
 ### Session Commands
 
 ```bash
-# Sessions are managed automatically
-clanker  # Starts new or resumes last session
-
-# View session info (when in chat)
-> /session
-
-# Export current session
-> /export
+# In chat, use these commands:
+/session    # View session info
+/export     # Export current session
+/clear      # Clear current session
 ```
 
-## Common Tasks
-
-### Getting Started
-```bash
-# Start a conversation with Clanker
-clanker
-
-# Ask Clanker to help with a specific task
-> "Help me refactor this function to use async/await"
-> "Find all TODO comments in the project"
-> "Create a new React component with TypeScript"
-```
-
-### Working with Files
-```bash
-# View file contents
-> "Show me the package.json file"
-
-# Edit files
-> "Add error handling to the login function"
-
-# Create new files
-> "Create a new test file for UserService"
-
-# Search code
-> "Find all instances of console.log"
-```
-
-### Running Commands
-```bash
-# Execute shell commands (requires bash tool)
-> "Run npm test"
-> "Show me the git status"
-> "Install the lodash package"
-```
-
-## Configuration
-
-Clanker stores configuration in `~/.clanker/`:
-
-```
-~/.clanker/
-├── settings.json      # API keys and preferences
-├── tools/             # Installed tools
-└── history/           # Command history
-```
+## ⚙️ Configuration
 
 ### Supported AI Providers
 
 - **xAI Grok** (default) - Fast and capable
 - **OpenAI** - GPT-4 and other models
 - **Anthropic** - Claude models
+- **Google** - Gemini models
 - **Custom** - Any OpenAI-compatible endpoint
 
 ### Setting Up Your API Key
 
-On first run, Clanker will prompt you for an API key. You can also configure it manually:
-
 ```bash
-# During first run
+# On first run, Clanker will prompt for setup
 clanker
-# Follow the prompts to enter your API key
 
 # Or set environment variable
 export CLANKER_API_KEY="your-api-key-here"
 
-# Or add to ~/.clanker/settings.json
+# Or configure in ~/.clanker/settings.json
 {
   "apiKey": "your-api-key-here",
   "provider": "grok"
 }
 ```
 
-## Advanced Workflows
+## 🤝 Contributing
 
-### Refactoring a Codebase
-```bash
-> "Update all imports from 'lib/' to '@/lib/'"
-> "Convert all class components to functional components"
-> "Add TypeScript types to all exported functions"
-```
+We welcome contributions! Clanker uses an automated submission system for features, fixes, and maintenance tasks.
 
-### Setting Up a New Project
-```bash
-> "Create a new Express API with TypeScript"
-> "Set up ESLint and Prettier with sensible defaults"
-> "Create a GitHub Actions workflow for CI/CD"
-```
+### Automated Contribution Process
 
-### Debugging Issues
-```bash
-> "Find all console.error calls and add stack traces"
-> "Add debug logging to the authentication flow"
-> "Check for potential race conditions in async code"
-```
+1. **Browse Issue Templates**: 
+   - [🚀 Submit a Feature](https://github.com/zigglers/clanker/issues/new?template=clanker-feature.yml)
+   - [🐛 Submit a Fix](https://github.com/zigglers/clanker/issues/new?template=clanker-fix.yml)
+   - [🔧 Submit a Chore](https://github.com/zigglers/clanker/issues/new?template=clanker-chore.yml)
 
-### Managing Tasks
-```bash
-# Create a todo list (requires todo tools)
-> "Create a todo list for implementing user authentication"
-> "Update task 3 to completed"
-> "Show me all pending tasks"
-```
+2. **Fill Out the Template**: Provide all required information including:
+   - Description of changes
+   - Changelog entry
+   - Semantic version
+   - Testing plan
 
-## Philosophy
+3. **Automatic PR Creation**: Our GitHub Actions will:
+   - Validate your submission
+   - Create a feature branch
+   - Update version and changelog
+   - Create a pull request
+   - Run CI/CD checks
 
-Traditional AI assistants are suggestion engines. Clanker is different—it's an **action engine**.
+4. **Review & Release**: Once approved and merged:
+   - Automatic GitHub release creation
+   - NPM package publishing (if configured)
+   - Issue labeled as "released"
 
-Instead of:
-> "Here's how you could refactor this code..."
-
-Clanker says:
-> "I'll refactor this code. Here's what I'm changing... Approve? [Y/n]"
-
-This shift from passive suggestions to active assistance means you spend less time copying code and more time reviewing and shipping changes.
-
-## Documentation
-
-- 🚀 **[Getting Started](https://github.com/zigglers/clanker/wiki/Getting-Started)** - Installation and first steps
-- 🛠️ **[Tool Development](https://github.com/zigglers/clanker/wiki/Tool-Development)** - Create custom tools
-- 📦 **[Tool Registry](https://github.com/zigglers/rachet)** - Browse available tools
-- 🏗️ **[Architecture](https://github.com/zigglers/clanker/wiki/Architecture)** - How Clanker works
-- 📚 **[API Reference](https://github.com/zigglers/clanker/wiki/API-Reference)** - Complete API docs
-
-## Contributing
-
-We welcome contributions! Here's how to get involved:
-
-- 🐛 [Report bugs](https://github.com/zigglers/clanker/issues/new?template=bug_report.md)
-- 💡 [Request features](https://github.com/zigglers/clanker/issues/new?template=feature_request.md)  
-- 🛠️ [Submit tools](https://github.com/zigglers/rachet/issues/new?template=tool_submission.md)
-- 📖 [Improve docs](https://github.com/zigglers/clanker/wiki)
-
-### Development Setup
+### Manual Development
 
 ```bash
 # Clone the repo
@@ -453,13 +326,64 @@ npm test
 npm run build
 ```
 
-## Community
+### Tool Submissions
 
-- 💬 [GitHub Discussions](https://github.com/zigglers/clanker/discussions) - Ask questions, share ideas
-- 🌟 [Show & Tell](https://github.com/zigglers/clanker/discussions/categories/show-and-tell) - Share your tools and workflows
-- 🐛 [Issue Tracker](https://github.com/zigglers/clanker/issues) - Report bugs and request features
+To submit a new tool to the registry:
 
-## License
+1. Create your tool following the [Tool Development Guide](https://github.com/zigglers/clanker/wiki/Tool-Development)
+2. Test it locally with `clanker -I ./`
+3. Submit it at [github.com/zigglers/rachet](https://github.com/zigglers/rachet/issues/new?template=tool_submission.yml)
+
+## 📚 Documentation
+
+- 🚀 **[Getting Started](https://github.com/zigglers/clanker/wiki/Getting-Started)** - Installation and first steps
+- 🛠️ **[Tool Development](https://github.com/zigglers/clanker/wiki/Tool-Development)** - Create custom tools
+- 📦 **[Tool Registry](https://github.com/zigglers/rachet)** - Browse available tools
+- 🏗️ **[Architecture](https://github.com/zigglers/clanker/wiki/Architecture)** - How Clanker works
+- 📚 **[API Reference](https://github.com/zigglers/clanker/wiki/API-Reference)** - Complete API docs
+- 🪝 **[Hook System](https://github.com/zigglers/clanker/wiki/Hooks)** - Event-driven extensions
+- 💾 **[Session Management](https://github.com/zigglers/clanker/wiki/Sessions)** - Persistent conversations
+
+## 🌟 Philosophy
+
+Traditional AI assistants are suggestion engines. Clanker is different—it's an **action engine**.
+
+Instead of:
+> "Here's how you could refactor this code..."
+
+Clanker says:
+> "I'll refactor this code. Here's what I'm changing... Approve? [Y/n]"
+
+This shift from passive suggestions to active assistance means you spend less time copying code and more time reviewing and shipping changes.
+
+## 🏆 What's New
+
+### v0.4.2 (Latest)
+- 🤖 **GitHub Automation**: Automated PR creation from issues
+- 📦 **Release Management**: Automatic releases on PR merge
+- 🔄 **Self-Update**: Update directly from GitHub releases
+- 🧹 **Code Cleanup**: Improved repository structure
+
+### v0.3.1
+- 🔄 **Update All Tools**: Update all installed tools at once
+- 🚀 **Self-Update**: Keep clanker up-to-date
+
+### v0.3.0
+- 🪝 **Hook System**: Comprehensive event-driven architecture
+- 💾 **Session Management**: Persistent chat sessions with auto-save
+- 📦 **Local Tool Installation**: Install tools from local directories
+- 🔧 **Enhanced Tool Context**: Tools can execute other tools
+- 🔗 **Tool Dependencies**: Automatic dependency installation
+
+## 🐛 Known Issues
+
+- Some terminals may have issues with Unicode characters
+- Large file operations may require increased memory limits
+- Windows support is experimental
+
+Report issues at [github.com/zigglers/clanker/issues](https://github.com/zigglers/clanker/issues)
+
+## 📄 License
 
 MIT © [Ziggler](https://github.com/zigglers)
 
@@ -470,6 +394,11 @@ MIT © [Ziggler](https://github.com/zigglers)
   <p>
     <a href="https://github.com/zigglers/clanker">⭐ Star on GitHub</a> • 
     <a href="https://github.com/zigglers/clanker/wiki/Getting-Started">📚 Get Started</a> • 
+    <a href="https://github.com/zigglers/rachet">🛠️ Browse Tools</a> •
     <a href="https://twitter.com/intent/tweet?text=Check%20out%20Clanker%20-%20AI%20agents%20that%20actually%20DO%20things!&url=https://github.com/zigglers/clanker">🐦 Share</a>
+  </p>
+  
+  <p>
+    <sub>Built with ❤️ by the Zigglers team</sub>
   </p>
 </div>
