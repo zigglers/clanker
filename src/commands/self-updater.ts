@@ -218,24 +218,34 @@ export class SelfUpdater {
     // Move new installation to CLI directory
     await fs.rename(newInstallPath, targetPath);
     
-    // Get npm global bin directory
-    const npmBin = execSync('npm bin -g', { encoding: 'utf8' }).trim();
-    const clankerBinPath = path.join(npmBin, 'clanker');
-    
-    // Remove npm's clanker command
+    // Try to get npm global bin directory for cleanup
     try {
-      await fs.unlink(clankerBinPath);
-      console.log('📤 Removed npm-installed clanker command');
-    } catch {
-      // May not exist or may not have permissions
-    }
-    
-    // Uninstall from npm to clean up
-    try {
-      console.log('🧹 Uninstalling npm package...');
-      execSync('npm uninstall -g @ziggler/clanker', { stdio: 'inherit' });
-    } catch {
-      // Might fail but that's okay
+      // Use npm prefix -g instead of npm bin -g (removed in npm v9+)
+      const npmPrefix = execSync('npm prefix -g', { encoding: 'utf8' }).trim();
+      const npmBin = process.platform === 'win32' 
+        ? npmPrefix // On Windows, binaries are in the prefix root
+        : path.join(npmPrefix, 'bin'); // On Unix-like systems, binaries are in prefix/bin
+      
+      const clankerBinPath = path.join(npmBin, 'clanker');
+      
+      // Remove npm's clanker command
+      try {
+        await fs.unlink(clankerBinPath);
+        console.log('📤 Removed npm-installed clanker command');
+      } catch {
+        // May not exist or may not have permissions
+      }
+      
+      // Uninstall from npm to clean up
+      try {
+        console.log('🧹 Uninstalling npm package...');
+        execSync('npm uninstall -g @ziggler/clanker', { stdio: 'inherit' });
+      } catch {
+        // Might fail but that's okay
+      }
+    } catch (error) {
+      // If npm commands fail, just skip the cleanup
+      console.log('⚠️  Could not clean up npm installation (npm may not be available)');
     }
   }
 
