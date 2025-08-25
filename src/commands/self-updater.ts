@@ -207,8 +207,16 @@ export class SelfUpdater {
    * Replace npm installation with GitHub-based installation
    */
   private async replaceNpmInstallation(newInstallPath: string): Promise<void> {
+    const targetPath = path.join(this.INSTALL_DIR, 'current');
+    
+    // Check if target directory exists and remove it
+    if (await this.pathExists(targetPath)) {
+      console.log('📦 Removing existing installation...');
+      await fs.rm(targetPath, { recursive: true, force: true });
+    }
+    
     // Move new installation to CLI directory
-    await fs.rename(newInstallPath, path.join(this.INSTALL_DIR, 'current'));
+    await fs.rename(newInstallPath, targetPath);
     
     // Get npm global bin directory
     const npmBin = execSync('npm bin -g', { encoding: 'utf8' }).trim();
