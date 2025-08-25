@@ -84,6 +84,7 @@ export class ToolLoader {
     private loadedTools = new Map<string, { path: string; hash: string }>(); // toolId -> {filePath, hash}
     private watcherCleanup: (() => void)[] = [];
     private fileWatchers = new Map<string, fsSync.FSWatcher>(); // filePath -> watcher
+    private moduleCache = new Map<string, any>(); // filePath -> loaded module (cache for performance)
 
     constructor(private registry: ToolRegistry, options: LoaderOptions = {}) {
         // Get user home directory in a cross-platform way
@@ -110,12 +111,14 @@ export class ToolLoader {
         //     await this.loadBuiltinTools();
         // }
 
-        // Load from each configured directory
-        for (const dir of this.options.directories) {
+        // Load from all directories in parallel for better performance
+        const loadPromises = this.options.directories.map(async dir => {
             const toolsDir = path.join(dir, dir.endsWith('tools') ? '' : 'tools');
             debug.log(`[ToolLoader] Loading from directory: ${dir} -> ${toolsDir}`);
             await this.loadFromDirectory(toolsDir);
-        }
+        });
+        
+        await Promise.all(loadPromises);
 
         // Set up watchers if enabled
         if (this.options.watch) {
@@ -224,20 +227,28 @@ export class ToolLoader {
             .map(entry => path.join(directory, entry.name));
 
         debug.log(`[ToolLoader] Found ${files.length} tool files in ${directory}`);
-        for (const file of files) {
-            await this.loadToolFile(file);
-        }
+        // Load all files in parallel for better performance
+        await Promise.all(files.map(file => this.loadToolFile(file)));
 
         // Process subdirectories if recursive
         if (!recursive) return;
 
         const subdirs = entries
-            .filter(entry => entry.isDirectory())
+            .filter(entry => {
+                // Skip common non-tool directories to speed up scanning
+                const name = entry.name;
+                if (name === 'node_modules' || name === '.git' || name === 'dist' || 
+                    name === 'build' || name === '.next' || name === '.cache' ||
+                    // Skip version directories (e.g., "1.0.0", "2.1.3")
+                    /^\d+\.\d+\.\d+/.test(name)) {
+                    return false;
+                }
+                return entry.isDirectory();
+            })
             .map(entry => path.join(directory, entry.name));
 
-        for (const subdir of subdirs) {
-            await this.scanDirectory(subdir, true);
-        }
+        // Scan subdirectories in parallel
+        await Promise.all(subdirs.map(subdir => this.scanDirectory(subdir, true)));
     }
 
     /**
@@ -247,18 +258,24 @@ export class ToolLoader {
         try {
             debug.log(`[ToolLoader] Attempting to load: ${filePath}`);
 
-            // Compute file hash
-            const fileHash = await this.computeFileHash(filePath);
-            debug.log(`[ToolLoader] File hash for ${filePath}: ${fileHash.substring(0, 8)}...`);
+            // Skip hash computation for initial load - just load the tool
+            // Hash checking is mainly useful for watch mode
+            let fileHash = 'initial-load';
+            
+            if (this.options.watch) {
+                // Only compute hash if we're in watch mode
+                fileHash = await this.computeFileHash(filePath);
+                debug.log(`[ToolLoader] File hash for ${filePath}: ${fileHash.substring(0, 8)}...`);
 
-            // Check if tool is already loaded with same hash
-            const existingEntry = Array.from(this.loadedTools.entries())
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                .find(([_, info]) => info.path === filePath);
+                // Check if tool is already loaded with same hash
+                const existingEntry = Array.from(this.loadedTools.entries())
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                    .find(([_, info]) => info.path === filePath);
 
-            if (existingEntry && existingEntry[1].hash === fileHash) {
-                debug.log(`[ToolLoader] Tool already loaded with same version: ${existingEntry[0]}`);
-                return;
+                if (existingEntry && existingEntry[1].hash === fileHash) {
+                    debug.log(`[ToolLoader] Tool already loaded with same version: ${existingEntry[0]}`);
+                    return;
+                }
             }
 
             // Dynamic import
@@ -312,6 +329,12 @@ export class ToolLoader {
      * Import a module handling TypeScript if needed
      */
     private async importModule(filePath: string): Promise<any> {
+        // Check cache first
+        if (this.moduleCache.has(filePath)) {
+            debug.log(`[ToolLoader] Using cached module for ${filePath}`);
+            return this.moduleCache.get(filePath);
+        }
+        
         try {
             // For .js files in production, try different approaches
             if (filePath.endsWith('.js')) {
@@ -328,6 +351,7 @@ export class ToolLoader {
                     const loadedModule = this.loadWithSharedDependencies(require, filePath);
 
                     debug.log(`[ToolLoader] Loaded ${filePath} using createRequire with shared deps`);
+                    this.moduleCache.set(filePath, loadedModule);
                     return loadedModule;
                 } catch (error) {
                     debug.log(`[ToolLoader] createRequire failed for ${filePath}:`, error);
@@ -339,6 +363,7 @@ export class ToolLoader {
                     const requireFunc = eval('require');
                     const loadedModule = this.loadWithSharedDependencies(requireFunc, filePath);
                     debug.log(`[ToolLoader] Loaded ${filePath} using direct require with shared deps`);
+                    this.moduleCache.set(filePath, loadedModule);
                     return loadedModule;
                 } catch (error) {
                     debug.log(`[ToolLoader] Direct require failed for ${filePath}:`, error);
