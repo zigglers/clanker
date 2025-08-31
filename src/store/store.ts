@@ -343,6 +343,10 @@ export const actions = {
 
     setInputValue(value: string) {
         store.inputValue = value;
+        // Adjust cursor position if it's beyond the new text length
+        if (store.cursorPosition > value.length) {
+            store.cursorPosition = value.length;
+        }
     },
 
     getInputValue(): string {

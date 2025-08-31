@@ -394,8 +394,50 @@ jobs:
             echo "push_failed=false" >> $GITHUB_OUTPUT
           fi
       
-      - name: Trigger PR Creation Workflow
+      - name: Validate PR Changes
         if: success()
+        id: validate_changes
+        run: |
+          TYPE="${{ steps.parse.outputs.submission_type }}"
+          
+          echo "🔍 Validating that PR contains actual implementation changes..."
+          
+          # Run validation script
+          if node scripts/validate-pr-changes.js "$TYPE"; then
+            echo "✅ PR validation passed"
+            echo "validation_passed=true" >> $GITHUB_OUTPUT
+          else
+            echo "❌ PR validation failed - no actual implementation found"
+            echo "validation_passed=false" >> $GITHUB_OUTPUT
+            
+            # Comment on issue about the validation failure
+            gh issue comment ${{ github.event.issue.number }} \
+              --body "## ⚠️ Automated PR Creation Failed
+
+### Validation Error
+The automation detected that no actual implementation code was provided for this $TYPE submission.
+
+### What's Required
+For **$TYPE** submissions, you must include:
+- Actual source code changes (in \`src/\` directory)
+- Implementation of the described feature/fix
+- Not just version bumps or changelog updates
+
+### How to Fix
+1. Manually implement the feature/fix described in this issue
+2. Create a PR with the actual code changes
+3. Reference this issue (#${{ github.event.issue.number }}) in your PR
+
+### Note
+The Clanker automation currently only handles version management and changelog updates. It cannot automatically implement features based on descriptions. Manual implementation is required.
+
+If this is a simple version bump or documentation change, please use the **chore** submission type instead."
+            
+            exit 1
+          fi
+      
+      - name: Trigger PR Creation Workflow
+        if: success() && steps.validate_changes.outputs.validation_passed == 'true'
         id: pr
         uses: actions/github-script@v7
         env:

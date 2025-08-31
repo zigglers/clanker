@@ -366,6 +366,33 @@ program
             // Commands that require API key
             if (options.listTools || options.prompt || !options.publish) {
                 if (!apiKey) {
+                    // Check if this is the first run and offer to run the wizard
+                    const {ConfigurationWizard} = await import('./wizard/ConfigurationWizard');
+                    const wizard = new ConfigurationWizard();
+                    
+                    if (wizard.isFirstRun()) {
+                        console.log(
+                            "👋 Welcome to Clanker! It looks like this is your first time running the CLI.\n"
+                        );
+                        const readline = require('readline').createInterface({
+                            input: process.stdin,
+                            output: process.stdout
+                        });
+                        
+                        const runWizard = await new Promise<boolean>((resolve) => {
+                            readline.question('Would you like to run the setup wizard? (Y/n): ', (answer) => {
+                                readline.close();
+                                resolve(answer.toLowerCase() !== 'n');
+                            });
+                        });
+                        
+                        if (runWizard) {
+                            await wizard.run();
+                            console.log('\n🚀 Setup complete! Run clanker again to start using it.\n');
+                            process.exit(0);
+                        }
+                    }
+                    
                     console.error(
                         "❌ Error: API key required. Set CLANKER_API_KEY environment variable, use --api-key flag, or save to ~/.clanker/user-settings.json"
                     );
@@ -476,6 +503,18 @@ program
     });
 
 // Add subcommands for better UX while keeping backward compatibility
+
+// Setup/configuration command
+program
+    .command('setup')
+    .alias('configure')
+    .description('Run the configuration wizard')
+    .option('-s, --skip', 'Skip wizard for experienced users')
+    .action(async (options) => {
+        const {ConfigurationWizard} = await import('./wizard/ConfigurationWizard');
+        const wizard = new ConfigurationWizard();
+        await wizard.run(options.skip);
+    });
 
 // Install command
 program
