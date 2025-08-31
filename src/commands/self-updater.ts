@@ -256,9 +256,13 @@ export class SelfUpdater {
     const binPath = path.join(this.INSTALL_DIR, 'current', 'dist', 'index.js');
     const linkPath = '/usr/local/bin/clanker';
     
-    // Create executable script
+    // Create executable wrapper script that properly handles ESM modules
+    // This uses dynamic import() instead of require() to support ES modules with top-level await
     const scriptContent = `#!/usr/bin/env node
-require('${binPath}');
+import('${binPath}').catch(err => {
+  console.error('Failed to load Clanker:', err.message);
+  process.exit(1);
+});
 `;
     
     const scriptPath = path.join(this.INSTALL_DIR, 'clanker');
