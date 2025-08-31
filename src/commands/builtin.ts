@@ -55,6 +55,7 @@ export function registerBuiltinCommands() {
                 description: 'Model',
                 required: true,
                 options: [
+                    {value: 'grok-code-fast-1', label: 'Grok Code Fast 1'},
                     {value: 'grok-4-0709', label: 'Grok 4'},
                     {value: 'grok-3', label: 'Grok 3'},
                     {value: 'grok-3-mini', label: 'Grok 3 Mini'},
@@ -237,6 +238,7 @@ export function registerBuiltinCommands() {
                 description: 'AI Model',
                 required: false,
                 options: [
+                    {value: 'grok-code-fast-1', label: 'Grok Code Fast 1'},
                     {value: 'grok-4-0709', label: 'Grok 4'},
                     {value: 'grok-3', label: 'Grok 3'},
                     {value: 'grok-3-mini', label: 'Grok 3 Mini'},

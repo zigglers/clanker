@@ -48,7 +48,7 @@ export interface GrokResponse {
 
 export class GrokClient {
     private client: OpenAI;
-    private currentModel: string = "grok-3-latest";
+    private currentModel: string = "grok-code-fast-1";
 
     constructor(apiKey: string, model?: string, baseURL?: string) {
         this.client = new OpenAI({

@@ -65,7 +65,7 @@ export class GrokAgent extends EventEmitter {
             options.model,
             options.baseURL
         );
-        this.model = options.model || 'grok-3-latest';
+        this.model = options.model || 'grok-code-fast-1';
         this.maxToolRounds = options.maxToolRounds || 30;
         // this.tokenCounter = createTokenCounter(this.model);
 

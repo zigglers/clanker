@@ -100,7 +100,7 @@ async function processPromptHeadless(
         const agent = new GrokAgent({
             apiKey,
             baseURL,
-            model: model || process.env.GROK_MODEL || "grok-3-latest",
+            model: model || process.env.GROK_MODEL || "grok-code-fast-1",
             loadDynamicTools,
             dynamicToolsPath,
             watchTools
@@ -171,7 +171,7 @@ program
     )
     .option(
         "-m, --model <model>",
-        "Model to use (default: grok-3-latest)"
+        "Model to use (default: grok-code-fast-1)"
     )
     .option(
         "-p, --prompt <prompt>",

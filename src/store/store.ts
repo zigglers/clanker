@@ -125,7 +125,7 @@ export const store = proxy<AppState>({
     commandSuggestions: [],
     showModelSelection: false,
     selectedModelIndex: 0,
-    availableModels: ['grok-4-latest', 'grok-3-latest', 'grok-4', 'grok-3', 'grok-beta'],
+    availableModels: ['grok-code-fast-1', 'grok-4-latest', 'grok-3-latest', 'grok-4', 'grok-3', 'grok-beta'],
     showCommandForm: false,
 
     // Stage management
@@ -142,7 +142,7 @@ export const store = proxy<AppState>({
         alwaysSearch: false,
     },
     theme: 'auto',
-    model: 'grok-beta',
+    model: 'grok-code-fast-1',
 
     // Confirmation slice
     confirmationOptions: null,
