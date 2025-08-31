@@ -9,6 +9,7 @@ export const ProviderModels = {
         name: 'Grok',
         baseURL: 'https://api.x.ai/v1',
         models: [
+            {value: 'grok-code-fast-1', label: 'Grok Code Fast 1'},
             {value: 'grok-4-0709', label: 'Grok 4'},
             {value: 'grok-3', label: 'Grok 3'},
             {value: 'grok-3-mini', label: 'Grok 3 Mini'},
@@ -17,7 +18,7 @@ export const ProviderModels = {
             {value: 'grok-2-vision-1212', label: 'Grok 2 Vision'},
             {value: 'grok-2-image-1212', label: 'Grok 2 Image'}
         ],
-        defaultModel: 'grok-3'
+        defaultModel: 'grok-code-fast-1'
     },
     openai: {
         name: 'OpenAI',
