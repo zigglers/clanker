@@ -11,8 +11,15 @@ export const ChatInput: React.FC = React.memo(() => {
     // Get state values - Valtio handles reactivity automatically
     const snap = useSnapshot(store);
     const inputValue = snap.inputValue;
+    const cursorPosition = snap.cursorPosition;
     const isProcessing = snap.isProcessing;
     const isStreaming = snap.isStreaming;
+    
+    // Split input into parts for cursor display
+    const beforeCursor = inputValue.slice(0, cursorPosition);
+    const atCursor = inputValue[cursorPosition] || ' ';
+    const afterCursor = inputValue.slice(cursorPosition + 1);
+    
     return (
         <Box 
             borderStyle="single" 
@@ -29,8 +36,11 @@ export const ChatInput: React.FC = React.memo(() => {
         >
             <Text color="gray">❯ </Text>
             <Text>
-                {inputValue}
-                {!isProcessing && !isStreaming && <Text color="white">█</Text>}
+                {beforeCursor}
+                {!isProcessing && !isStreaming && (
+                    <Text inverse>{atCursor}</Text>
+                )}
+                {afterCursor}
             </Text>
         </Box>
     );

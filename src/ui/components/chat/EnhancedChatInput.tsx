@@ -9,6 +9,7 @@ import {store, actions} from "../../../store";
 export const EnhancedChatInput: React.FC = React.memo(() => {
     const snap = useSnapshot(store);
     const inputValue = snap.inputValue;
+    const cursorPosition = snap.cursorPosition;
     const isProcessing = snap.isProcessing;
     const isStreaming = snap.isStreaming;
     const vimMode = snap.chatVimMode;
@@ -68,6 +69,11 @@ export const EnhancedChatInput: React.FC = React.memo(() => {
         // Insert mode - handled by existing input handler
     }, {isActive: isTTY});
     
+    // Split input for cursor display
+    const beforeCursor = inputValue.slice(0, cursorPosition);
+    const atCursor = inputValue[cursorPosition] || ' ';
+    const afterCursor = inputValue.slice(cursorPosition + 1);
+    
     return (
         <Box 
             borderStyle="single" 
@@ -84,13 +90,14 @@ export const EnhancedChatInput: React.FC = React.memo(() => {
         >
             <Text color="gray">❯ </Text>
             <Text>
-                {inputValue}
+                {beforeCursor}
                 {!isProcessing && !isStreaming && vimMode === 'insert' && (
-                    <Text color="white">█</Text>
+                    <Text inverse>{atCursor}</Text>
                 )}
                 {!isProcessing && !isStreaming && vimMode === 'normal' && (
-                    <Text color="yellow" inverse> </Text>
+                    <Text color="yellow" inverse>{atCursor}</Text>
                 )}
+                {afterCursor}
             </Text>
         </Box>
     );

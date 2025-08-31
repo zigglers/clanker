@@ -106,7 +106,7 @@ export function ChatContainer() {
             return;
         }
 
-        // Arrow keys
+        // Arrow keys for navigation
         if (key.upArrow) {
             handleUpArrow();
             return;
@@ -117,20 +117,79 @@ export function ChatContainer() {
             return;
         }
 
-        // Backspace/Delete
-        if (key.backspace || key.delete) {
-            actions.setInputValue(snap.inputValue.slice(0, -1));
+        // Left arrow - move cursor left
+        if (key.leftArrow) {
+            const newPos = Math.max(0, snap.cursorPosition - 1);
+            actions.setCursorPosition(newPos);
             return;
         }
 
-        // Regular character input
+        // Right arrow - move cursor right
+        if (key.rightArrow) {
+            const newPos = Math.min(snap.inputValue.length, snap.cursorPosition + 1);
+            actions.setCursorPosition(newPos);
+            return;
+        }
+
+        // Cmd/Ctrl + Left - jump to start of line (or Home key)
+        if ((key.ctrl && key.leftArrow) || (key.meta && key.leftArrow) || inputChar === '\x01') {
+            actions.setCursorPosition(0);
+            return;
+        }
+
+        // Cmd/Ctrl + Right - jump to end of line (or End key)
+        if ((key.ctrl && key.rightArrow) || (key.meta && key.rightArrow) || inputChar === '\x05') {
+            actions.setCursorPosition(snap.inputValue.length);
+            return;
+        }
+
+        // Ctrl + Left - jump by word backward
+        if (key.ctrl && inputChar === 'b') {
+            const text = snap.inputValue;
+            let newPos = snap.cursorPosition;
+            // Skip current whitespace
+            while (newPos > 0 && text[newPos - 1] === ' ') newPos--;
+            // Skip word characters
+            while (newPos > 0 && text[newPos - 1] !== ' ') newPos--;
+            actions.setCursorPosition(newPos);
+            return;
+        }
+
+        // Ctrl + Right - jump by word forward
+        if (key.ctrl && inputChar === 'f') {
+            const text = snap.inputValue;
+            let newPos = snap.cursorPosition;
+            // Skip current word characters
+            while (newPos < text.length && text[newPos] !== ' ') newPos++;
+            // Skip whitespace
+            while (newPos < text.length && text[newPos] === ' ') newPos++;
+            actions.setCursorPosition(newPos);
+            return;
+        }
+
+        // Backspace/Delete - delete at cursor position
+        if (key.backspace || key.delete) {
+            if (snap.cursorPosition > 0) {
+                const newValue = snap.inputValue.slice(0, snap.cursorPosition - 1) + 
+                                snap.inputValue.slice(snap.cursorPosition);
+                actions.setInputValue(newValue);
+                actions.setCursorPosition(snap.cursorPosition - 1);
+            }
+            return;
+        }
+
+        // Regular character input - insert at cursor position
         if (!key.ctrl && !key.meta && inputChar) {
             // Check for / command at start of input
             if (inputChar === '/' && snap.inputValue === '') {
                 actions.pushStage({ id: 'command-palette', type: StageType.COMMAND_PALETTE });
                 return;
             }
-            actions.setInputValue(snap.inputValue + inputChar);
+            const newValue = snap.inputValue.slice(0, snap.cursorPosition) + 
+                            inputChar + 
+                            snap.inputValue.slice(snap.cursorPosition);
+            actions.setInputValue(newValue);
+            actions.setCursorPosition(snap.cursorPosition + 1);
         }
     }, { isActive: isTTY });
 
