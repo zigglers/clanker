@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.8] - 2025-08-31
+
+### Added
+- Added support for grok-code-fast-1 model across all configurations
+- Set grok-code-fast-1 as the default model for improved code performance
+- Updated model selection dropdowns in settings and commands
+- Maintained backward compatibility with all existing models
+
 ## [0.5.7] - 2025-08-25
 
 ### Added
