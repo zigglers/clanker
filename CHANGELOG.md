@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2025-08-31
+
+### Added
+- **Arrow Key Navigation**: Full cursor movement support with left/right arrows, Cmd/Ctrl shortcuts for line start/end, and word boundary navigation
+- **Configuration Wizard**: Interactive setup wizard for first-time users with provider selection, API key configuration, and tool recommendations
+- **GitHub Installation Script**: One-liner installation script with automatic dependency checking and cross-platform support
+- **grok-code-fast-1 Model**: Set as default model for improved performance in code-related tasks
+- **Automation Validation**: Added PR validation to ensure actual code changes are included, preventing empty releases
+
+### Fixed
+- Fixed automation workflow that was creating "phantom releases" with only metadata changes
+- Implemented previously missing features from versions 0.5.0, 0.5.1, and earlier releases
+- ESM/CJS compatibility in upgrade command (from 0.5.10)
+
+### Changed
+- Default model changed from grok-3-latest to grok-code-fast-1 for better performance
+- Enhanced input components with visual cursor display
+- Improved first-run experience with automatic wizard prompt
+
 ## [0.5.9] - 2025-08-31
 
 ### Fixed
