@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.9] - 2025-08-31
+
+### Fixed
+- Fixed ESM/CJS compatibility in upgrade command by using import() instead of require()
+- Resolved Error [ERR_REQUIRE_ASYNC_MODULE] when running clanker upgrade
+- Added proper error handling for module loading failures in wrapper script
+
 ## [0.5.8] - 2025-08-31
 
 ### Added
