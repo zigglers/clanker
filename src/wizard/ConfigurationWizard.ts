@@ -6,7 +6,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import {prompt} from 'enquirer';
+import enquirer from 'enquirer';
+const {prompt} = enquirer;
 import chalk from 'chalk';
 import {SettingsManager, Settings, ProviderModels} from '../utils/settings-manager';
 import {execSync} from 'child_process';
