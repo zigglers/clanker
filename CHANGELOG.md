@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.2] - 2025-09-03
+
+### Added
+- Enhanced web-search tool display formatting with contextual parameters
+- Show search type, time range, and domain filters inline for web-search executions
+- Display result count and date ranges in compact notation
+- Added detailed timing logs for API latency tracking
+
+### Fixed
+- Resolved 20-second delay in interactive mode responses
+- Fixed duplicate tool loading on initialization
+- Made initialized flag more robust with getter property
+- Removed redundant waitForToolsToLoad calls
+
+### Improved
+- Performance optimization for interactive mode message handling
+- Better tool execution preview formatting in UI
+- More descriptive status messages during tool execution
+
 ## [0.6.1] - 2025-09-02
 
 ### Fixed
