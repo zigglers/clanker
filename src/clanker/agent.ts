@@ -55,7 +55,12 @@ export class GrokAgent extends EventEmitter {
     private hookManager: HookManager;
     private sessionManager: SessionManager;
     private sessionId?: string;
-    private initialized: boolean = false;
+    private _initialized: boolean = false;
+    
+    // Public getter for initialized state
+    public get initialized(): boolean {
+        return this._initialized;
+    }
     // private tokenCounter: TokenCounter;
 
     constructor(options: GrokAgentOptions) {
@@ -138,10 +143,22 @@ export class GrokAgent extends EventEmitter {
      * Initialize agent (must be called before using the agent)
      */
     async initialize(): Promise<void> {
-        if (this.initialized) return;
+        if (this.initialized) {
+            debug.log('[GrokAgent] Already initialized, skipping');
+            return;
+        }
         
-        // Load tools
-        await this.waitForToolsToLoad();
+        debug.log('[GrokAgent] Starting initialization...');
+        const startTime = Date.now();
+        
+        // Load tools only if not already loaded
+        if (this.toolLoader && this.registry.list().length === 0) {
+            debug.log('[GrokAgent] Loading tools...');
+            await this.waitForToolsToLoad();
+            debug.log(`[GrokAgent] Tools loaded in ${Date.now() - startTime}ms`);
+        } else {
+            debug.log(`[GrokAgent] Tools already loaded (${this.registry.list().length} tools registered)`);
+        }
         
         // Call startup hooks for all tools in parallel for better performance
         const tools = this.registry.list();
@@ -159,6 +176,7 @@ export class GrokAgent extends EventEmitter {
             });
         
         await Promise.all(startupPromises);
+        debug.log(`[GrokAgent] Startup hooks completed in ${Date.now() - startTime}ms`);
         
         // Initialize session if needed
         if (this.sessionId) {
@@ -181,7 +199,8 @@ export class GrokAgent extends EventEmitter {
             await this.hookManager.execute(HookEvent.SessionStart, sessionStartInput);
         }
         
-        this.initialized = true;
+        this._initialized = true;
+        debug.log(`[GrokAgent] Initialization complete in ${Date.now() - startTime}ms`);
     }
     
     /**
@@ -205,8 +224,12 @@ export class GrokAgent extends EventEmitter {
         stream: boolean = false
     ): Promise<string | AsyncGenerator<StreamingChunk, void, unknown>> {
         // Ensure agent is initialized
+        debug.log(`[GrokAgent] chat called, initialized=${this.initialized}`);
         if (!this.initialized) {
+            debug.log('[GrokAgent] Agent not initialized, initializing now...');
+            const initStart = Date.now();
             await this.initialize();
+            debug.log(`[GrokAgent] Initialization took ${Date.now() - initStart}ms`);
         }
         
         debug.log('[GrokAgent] chat called with', messages.length, 'messages, stream:', stream);

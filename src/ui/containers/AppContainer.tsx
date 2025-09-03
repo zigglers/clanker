@@ -52,10 +52,7 @@ export const AppContainer: React.FC<AppContainerProps> = ({ onRequestReload }) =
                         loadDynamicTools: true
                     });
 
-                    // Wait for tools to load first
-                    await newAgent.waitForToolsToLoad();
-                    
-                    // Then initialize (which will skip tool loading since they're already loaded)
+                    // Initialize agent (this will load tools and run startup hooks)
                     await newAgent.initialize();
                     
                     // Set agent in global store
@@ -114,10 +111,7 @@ export const AppContainer: React.FC<AppContainerProps> = ({ onRequestReload }) =
                 loadDynamicTools: true
             });
 
-            // Wait for tools to load first
-            await newAgent.waitForToolsToLoad();
-            
-            // Then initialize (which will skip tool loading since they're already loaded)
+            // Initialize agent (this will load tools and run startup hooks)
             await newAgent.initialize();
 
             // Update the global store
