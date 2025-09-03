@@ -54,6 +54,52 @@ function formatToolExecution(toolName: string, args: Record<string, unknown>): R
         case 'search':
             primaryArg = args.query as string;
             break;
+        case 'web-search':
+        case 'web_search':
+            // Build descriptive string for web-search
+            const query = args.query as string;
+            const parts: string[] = [query];
+            
+            // Add search type
+            if (args.search_type && args.search_type !== 'all') {
+                parts.push(`[${args.search_type}]`);
+            }
+            
+            // Add time range
+            if (args.time_range && args.time_range !== 'all') {
+                parts.push(`(${args.time_range})`);
+            } else if (args.custom_date_from || args.custom_date_to) {
+                if (args.custom_date_from && args.custom_date_to) {
+                    parts.push(`(${args.custom_date_from} to ${args.custom_date_to})`);
+                } else if (args.custom_date_from) {
+                    parts.push(`(since ${args.custom_date_from})`);
+                } else if (args.custom_date_to) {
+                    parts.push(`(until ${args.custom_date_to})`);
+                }
+            }
+            
+            // Add domain info
+            if (args.include_domains) {
+                const domains = String(args.include_domains).split(',').map(d => d.trim()).filter(d => d);
+                if (domains.length > 0) {
+                    parts.push(`+${domains.length === 1 ? domains[0] : domains.length + ' sites'}`);
+                }
+            }
+            
+            if (args.exclude_domains) {
+                const domains = String(args.exclude_domains).split(',').map(d => d.trim()).filter(d => d);
+                if (domains.length > 0) {
+                    parts.push(`-${domains.length === 1 ? domains[0] : domains.length + ' sites'}`);
+                }
+            }
+            
+            // Add result count if not default
+            if (args.max_results && args.max_results !== 10) {
+                parts.push(`${args.max_results} results`);
+            }
+            
+            primaryArg = parts.join(' ');
+            break;
         case 'pwd':
             // No args for pwd
             break;
