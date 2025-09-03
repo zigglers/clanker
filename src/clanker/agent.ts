@@ -302,9 +302,15 @@ export class GrokAgent extends EventEmitter {
             let lastFinishReason: string | null = null;
 
             // Process the stream
-            debug.log('[GrokAgent] Starting to process stream');
+            const streamStartTime = Date.now();
+            debug.log('[GrokAgent] Starting to process stream at', new Date().toISOString());
+            let firstChunkProcessed = false;
             for await (const chunk of stream) {
-                debug.log('[GrokAgent] Processing chunk');
+                if (!firstChunkProcessed) {
+                    const timeToFirstChunk = Date.now() - streamStartTime;
+                    debug.log(`[GrokAgent] First chunk processed after ${timeToFirstChunk}ms`);
+                    firstChunkProcessed = true;
+                }
                 // Skip chunks without choices or delta
                 if (!chunk.choices || chunk.choices.length === 0 || !chunk.choices[0].delta) {
                     continue;

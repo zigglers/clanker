@@ -140,7 +140,8 @@ export class GrokClient {
             requestPayload.stream = true;
             
             // Log timing for debugging
-            debug.log('[GrokClient] Creating stream with model:', requestPayload.model);
+            const startTime = Date.now();
+            debug.log('[GrokClient] Creating stream with model:', requestPayload.model, 'at', new Date().toISOString());
             
             // Create the stream directly without the cast
             const stream = await this.client.chat.completions.create({
@@ -152,13 +153,16 @@ export class GrokClient {
                 ...(tools && tools.length > 0 ? { tools, tool_choice: requestPayload.tool_choice as any } : {}),
                 ...(searchOptions ? searchOptions : {})
             });
-            debug.log('[GrokClient] Stream created');
+            const createTime = Date.now() - startTime;
+            debug.log(`[GrokClient] Stream created in ${createTime}ms at ${new Date().toISOString()}`);
 
             let firstChunk = true;
+            let firstChunkTime = 0;
 
             for await (const chunk of stream as AsyncIterable<ChatCompletionChunk>) {
                 if (firstChunk) {
-                    debug.log('[GrokClient] First chunk received');
+                    firstChunkTime = Date.now() - startTime;
+                    debug.log(`[GrokClient] First chunk received after ${firstChunkTime}ms at ${new Date().toISOString()}`);
                     firstChunk = false;
                 }
                 yield chunk;
